@@ -16,7 +16,9 @@ dependencies:
   firebase_auth_web: ^5.9.0
   cloud_firestore: ^5.6.1
   firebase_storage: ^12.4.0
-version: 1.0.0+1
+  shimmer: ^2.0.0  # Add the shimmer package
+  tflite: ^1.1.2 
+  path_provider: ^2.0.13
 
 flutter:
   uses-material-design: true
