@@ -37,6 +37,12 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
+
+    // Add dependencies block here
+    dependencies {
+        implementation 'org.tensorflow:tensorflow-lite:+'
+        // Other dependencies...
+    }
 }
 
 flutter {
