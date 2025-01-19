@@ -4,11 +4,13 @@ import 'package:tflite/tflite.dart';
 import 'dart:typed_data';
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'custom_app_bar.dart';
 import 'bottom_navigation_bar.dart';
-import 'camera_screen.dart'; // Import your camera screen
-import 'home_page.dart'; // Import the Home Page
+import 'camera_screen.dart';
+import 'home_page.dart';
 
 class CropDiseaseHome extends StatefulWidget {
   @override
@@ -21,6 +23,39 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   String _symptoms = '';
   bool _isLoading = false;
   int _currentIndex = 2;
+  Map<String, dynamic> _symptomsData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadModel();
+    _loadSymptomsData();
+  }
+
+  // Load TFLite model
+  Future<void> _loadModel() async {
+    try {
+      String? res = await Tflite.loadModel(
+        model: "assets/crop_disease_model.tflite",
+        labels: "assets/data/labels.txt",
+      );
+      print("Model loaded: $res");
+    } catch (e) {
+      print("Failed to load model: $e");
+    }
+  }
+
+  // Load symptoms data from JSON file
+  Future<void> _loadSymptomsData() async {
+    try {
+      String data = await rootBundle.loadString("assets/data/labels_with_symptoms.json");
+      setState(() {
+        _symptomsData = json.decode(data);
+      });
+    } catch (e) {
+      print("Failed to load symptoms data: $e");
+    }
+  }
 
   // Image picker function
   Future<void> _pickImage() async {
@@ -33,8 +68,9 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
             TextButton(
               onPressed: () async {
                 final picker = ImagePicker();
-                final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                
+                final pickedFile =
+                    await picker.pickImage(source: ImageSource.gallery);
+
                 if (pickedFile != null) {
                   _imageData = await pickedFile.readAsBytes();
                   Navigator.of(context).pop();
@@ -55,7 +91,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                   setState(() {
                     _imageData = imageBytes;
                   });
-                  await _sendImage(_imageData!); 
+                  await _sendImage(_imageData!);
                 }
               },
               child: Text('Take a Picture'),
@@ -93,21 +129,39 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
       if (result != null && result.isNotEmpty) {
         setState(() {
           _prediction = result[0]['label'] ?? 'No prediction available';
-          _symptoms = result[0]['label'] ?? 'No symptoms data available';
-          _isLoading = false;
         });
+        await _loadSymptoms(); // Load symptoms for the predicted label
       } else {
         setState(() {
           _prediction = 'No result found';
           _symptoms = 'No symptoms found';
-          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         _prediction = 'Error: $e';
         _symptoms = '';
+      });
+    } finally {
+      setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  // Load symptoms for the predicted label
+  Future<void> _loadSymptoms() async {
+    try {
+      final List<String>? symptomsList = _symptomsData[_prediction]?['symptoms']?.cast<String>();
+      setState(() {
+        _symptoms = symptomsList != null
+            ? symptomsList.join("\n") // Join the list items into a single string
+            : 'Symptoms not available for this label';
+      });
+    } catch (e) {
+      print("Failed to load symptoms for prediction: $e");
+      setState(() {
+        _symptoms = 'Error loading symptoms data';
       });
     }
   }
