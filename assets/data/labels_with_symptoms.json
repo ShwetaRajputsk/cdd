@@ -1,0 +1,138 @@
+{
+    "Pepper__bell___Bacterial_spot": {
+      "symptoms": [
+        "Dark, water-soaked spots on leaves.",
+        "Yellowing of leaf margins.",
+        "Small, dark, sunken lesions on fruits.",
+        "Defoliation and reduced yield.",
+        "Wilting and stunted growth."
+      ]
+    },
+    "Pepper__bell___healthy": {
+      "symptoms": [
+        "No visible symptoms.",
+        "Bright green leaves.",
+        "Healthy fruit development.",
+        "Sturdy stems.",
+        "Normal growth patterns."
+      ]
+    },
+    "Potato___Early_blight": {
+      "symptoms": [
+        "Dark brown spots on older leaves.",
+        "Yellowing of leaf margins.",
+        "Defoliation.",
+        "Reduced tuber quality.",
+        "Stunted plant growth."
+      ]
+    },
+    "Potato___Late_blight": {
+      "symptoms": [
+        "Water-soaked spots on leaves.",
+        "White mold on the undersides of leaves.",
+        "Rapid wilting of plants.",
+        "Dark, greasy spots on tubers.",
+        "Rotting of tubers in storage."
+      ]
+    },
+    "Potato___healthy": {
+      "symptoms": [
+        "No visible symptoms.",
+        "Healthy, green leaves.",
+        "Robust tuber development.",
+        "Strong stems.",
+        "Normal growth patterns."
+      ]
+    },
+    "Tomato_Bacterial_spot": {
+      "symptoms": [
+        "Dark, water-soaked lesions on leaves.",
+        "Yellowing of leaf edges.",
+        "Small, dark spots on fruits.",
+        "Leaf curling and wilting.",
+        "Reduced fruit quality."
+      ]
+    },
+    "Tomato_Early_blight": {
+      "symptoms": [
+        "Dark, concentric rings on leaves.",
+        "Yellowing and dropping of lower leaves.",
+        "Reduced fruit yield.",
+        "Dark lesions on stems.",
+        "Stunted plant growth."
+      ]
+    },
+    "Tomato_Late_blight": {
+      "symptoms": [
+        "Large, irregularly shaped water-soaked spots.",
+        "White mold on the underside of leaves.",
+        "Brown lesions on stems.",
+        "Rapid wilting of plants.",
+        "Tubers rot in the ground."
+      ]
+    },
+    "Tomato_Leaf_Mold": {
+      "symptoms": [
+        "Yellowing of leaves.",
+        "Fuzzy greenish-gray mold on the underside.",
+        "Leaf curling.",
+        "Defoliation.",
+        "Reduced fruit quality."
+      ]
+    },
+    "Tomato_Septoria_leaf_spot": {
+      "symptoms": [
+        "Small, round spots with dark borders.",
+        "Yellowing leaves.",
+        "Defoliation.",
+        "Reduced yield.",
+        "Dark, sunken spots on stems."
+      ]
+    },
+    "Tomato_Spider_mites_Two_spotted_spider_mite": {
+      "symptoms": [
+        "Fine webbing on leaves.",
+        "Yellowing and stippling of leaves.",
+        "Leaf drop.",
+        "Stunted growth.",
+        "Brown, crispy leaves."
+      ]
+    },
+    "Tomato__Target_Spot": {
+      "symptoms": [
+        "Dark, concentric ring spots on leaves.",
+        "Leaf drop.",
+        "Reduced yield.",
+        "Spots may appear on fruits.",
+        "Stunted growth."
+      ]
+    },
+    "Tomato__Tomato_YellowLeaf__Curl_Virus": {
+      "symptoms": [
+        "Yellowing of leaves.",
+        "Curling and distortion of leaves.",
+        "Stunted growth.",
+        "Reduced fruit set.",
+        "Plant wilting."
+      ]
+    },
+    "Tomato__Tomato_mosaic_virus": {
+      "symptoms": [
+        "Mosaic patterns on leaves.",
+        "Stunted growth.",
+        "Leaf curling.",
+        "Deformed fruits.",
+        "Reduced yield."
+      ]
+    },
+    "Tomato_healthy": {
+      "symptoms": [
+        "No visible symptoms.",
+        "Healthy green leaves.",
+        "Robust fruit development.",
+        "Strong stems.",
+        "Normal growth patterns."
+      ]
+    }
+  }
+  
