@@ -20,6 +20,8 @@ import 'select_your_crop_page.dart';
 import 'disease_detect.dart';
 import 'edit_profile.dart';
 import 'account.dart';
+import 'community.dart'; // Import CommunityPage
+import 'ask.dart' as ask; // Import AskCommunityScreen
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +40,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-         fontFamily: 'Roboto', // Set the global font family
+        fontFamily: 'Roboto', // Set the global font family
       ),
       home: AuthFlow(), // Updated home to AuthFlow for better handling
       routes: {
@@ -46,10 +48,12 @@ class MyApp extends StatelessWidget {
         '/home': (context) => HomePage(),
         '/login': (context) => LoginScreen(),
         '/signup': (context) => SignupScreen(),
-        '/selectYourCrop': (context) => SelectYourCropPage(selectedCrops: [],),
+        '/selectYourCrop': (context) => SelectYourCropPage(selectedCrops: []),
         '/diseaseDetect': (context) => CropDiseaseHome(),
         '/account': (context) => AccountPage(),
         '/editProfile': (context) => EditProfilePage(),
+        '/community': (context) => CommunityPage(), // Add CommunityPage to routes
+        '/askCommunity': (context) => ask.AskCommunityScreen(), // Add AskCommunityScreen to routes
       },
     );
   }
