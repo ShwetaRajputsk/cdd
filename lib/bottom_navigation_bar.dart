@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'home_page.dart';
+import 'community.dart';
+import 'disease_detect.dart';
+import 'account.dart';
 
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
@@ -10,7 +14,30 @@ class CustomBottomNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return BottomNavigationBar(
       currentIndex: currentIndex,
-      onTap: onTap,
+      onTap: (index) {
+        onTap(index);
+        if (index == 0) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HomePage()),
+          );
+        } else if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CommunityPage()),
+          );
+        } else if (index == 2) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CropDiseaseHome()),
+          );
+        } else if (index == 4) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AccountPage()),
+          );
+        }
+      },
       selectedItemColor: Colors.green,
       unselectedItemColor: Colors.grey,
       items: [
