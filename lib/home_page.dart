@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'custom_app_bar.dart';
 import 'bottom_navigation_bar.dart';
+import 'community.dart'; // Import CommunityPage
 
 void main() {
   runApp(MyApp());
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
         '/selectYourCrop': (context) => SelectYourCropPage(selectedCrops: []),
         '/home': (context) => CropDiseaseHome(),
         '/account': (context) => AccountPage(), // Add the Account Page route
+        '/community': (context) => CommunityPage(), // Add the Community Page route
       },
     );
   }
