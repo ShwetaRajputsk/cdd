@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:tflite/tflite.dart';
-import 'dart:typed_data';
-import 'dart:io';
-import 'dart:async';
+import 'camera_screen.dart'; // Import the camera screen
+import 'home_page.dart'; // Import the Home Page
+import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
+import 'dart:typed_data';
 import 'custom_app_bar.dart';
 import 'bottom_navigation_bar.dart';
-import 'camera_screen.dart';
-import 'home_page.dart';
 
 class CropDiseaseHome extends StatefulWidget {
   @override
@@ -18,46 +14,12 @@ class CropDiseaseHome extends StatefulWidget {
 }
 
 class _CropDiseaseHomeState extends State<CropDiseaseHome> {
-  Uint8List? _imageData;
+  Uint8List? _imageData; // To hold the selected image data
   String _prediction = '';
-  String _symptoms = '';
-  bool _isLoading = false;
-  int _currentIndex = 2;
-  Map<String, dynamic> _symptomsData = {};
+  String _symptoms = ''; // Variable to hold symptoms
+  bool _isLoading = false; // Add loading state
+  int _currentIndex = 2; // Track the current index for bottom navigation
 
-  @override
-  void initState() {
-    super.initState();
-    _loadModel();
-    _loadSymptomsData();
-  }
-
-  // Load TFLite model
-  Future<void> _loadModel() async {
-    try {
-      String? res = await Tflite.loadModel(
-        model: "assets/crop_disease_model.tflite",
-        labels: "assets/data/labels.txt",
-      );
-      print("Model loaded: $res");
-    } catch (e) {
-      print("Failed to load model: $e");
-    }
-  }
-
-  // Load symptoms data from JSON file
-  Future<void> _loadSymptomsData() async {
-    try {
-      String data = await rootBundle.loadString("assets/data/labels_with_symptoms.json");
-      setState(() {
-        _symptomsData = json.decode(data);
-      });
-    } catch (e) {
-      print("Failed to load symptoms data: $e");
-    }
-  }
-
-  // Image picker function
   Future<void> _pickImage() async {
     showDialog(
       context: context,
@@ -68,9 +30,8 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
             TextButton(
               onPressed: () async {
                 final picker = ImagePicker();
-                final pickedFile =
-                    await picker.pickImage(source: ImageSource.gallery);
-
+                final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                
                 if (pickedFile != null) {
                   _imageData = await pickedFile.readAsBytes();
                   Navigator.of(context).pop();
@@ -81,7 +42,8 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Close the dialog
+
                 final imageBytes = await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => CameraScreen()),
@@ -89,9 +51,9 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
 
                 if (imageBytes != null) {
                   setState(() {
-                    _imageData = imageBytes;
+                    _imageData = imageBytes; // Set the captured image data
                   });
-                  await _sendImage(_imageData!);
+                  await _sendImage(_imageData!); // Send for disease detection
                 }
               },
               child: Text('Take a Picture'),
@@ -108,60 +70,31 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
     );
   }
 
-  // Send image to model for prediction
   Future<void> _sendImage(Uint8List imageData) async {
     setState(() {
-      _isLoading = true;
+      _isLoading = true; // Set loading state to true
     });
 
     try {
-      final tempDir = await getTemporaryDirectory();
-      final filePath = '${tempDir.path}/temp_image.jpg';
-      final imageFile = File(filePath)..writeAsBytesSync(imageData);
+      final request = http.MultipartRequest('POST', Uri.parse('https://crop-disease-model.onrender.com/predict'));
+      request.files.add(http.MultipartFile.fromBytes('image', imageData, filename: 'image.jpg'));
 
-      var result = await Tflite.runModelOnImage(
-        path: filePath,
-        numResults: 2,
-        threshold: 0.1,
-        asynch: true,
-      );
+      final response = await request.send();
+      final responseData = await response.stream.toBytes();
+      final result = String.fromCharCodes(responseData);
 
-      if (result != null && result.isNotEmpty) {
-        setState(() {
-          _prediction = result[0]['label'] ?? 'No prediction available';
-        });
-        await _loadSymptoms(); // Load symptoms for the predicted label
-      } else {
-        setState(() {
-          _prediction = 'No result found';
-          _symptoms = 'No symptoms found';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _prediction = 'Error: $e';
-        _symptoms = '';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+      final jsonResponse = jsonDecode(result);
 
-  // Load symptoms for the predicted label
-  Future<void> _loadSymptoms() async {
-    try {
-      final List<String>? symptomsList = _symptomsData[_prediction]?['symptoms']?.cast<String>();
       setState(() {
-        _symptoms = symptomsList != null
-            ? symptomsList.join("\n") // Join the list items into a single string
-            : 'Symptoms not available for this label';
+        _prediction = jsonResponse['prediction']; 
+        _symptoms = (jsonResponse['symptoms'] as List).join('\n');
+        _isLoading = false; // Set loading state to false after the response
       });
     } catch (e) {
-      print("Failed to load symptoms for prediction: $e");
       setState(() {
-        _symptoms = 'Error loading symptoms data';
+        _prediction = 'Error: $e'; 
+        _symptoms = ''; 
+        _isLoading = false; // Set loading state to false in case of error
       });
     }
   }
@@ -169,12 +102,14 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;
+      // Navigate to different pages based on selected index
       if (_currentIndex == 0) {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => HomePage()),
         );
       }
+      // You can add more navigation logic for other items if needed
     });
   }
 
@@ -219,8 +154,9 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                 ? Text('No image selected.', style: TextStyle(color: Color(0xFF222222)))
                 : Column(
                     children: [
-                      Image.memory(_imageData!, height: 200, width: 200),
+                      Image.memory(_imageData!, height: 200, width: 200), // Display captured or uploaded image
                       SizedBox(height: 20),
+                      // Prediction section with background card
                       Card(
                         color: Colors.white,
                         elevation: 5,
@@ -237,17 +173,17 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: Color(0xFF088A6A),
+                                  color: Color(0xFF088A6A), // Color for "Prediction"
                                 ),
                               ),
                               SizedBox(height: 10),
                               _isLoading
-                                  ? CircularProgressIndicator()
+                                  ? CircularProgressIndicator() // Show loading indicator
                                   : Text(
                                       _prediction,
                                       style: TextStyle(
                                         fontSize: 16,
-                                        color: Color(0xFF222222),
+                                        color: Color(0xFF222222), // Content in normal color
                                       ),
                                     ),
                             ],
@@ -255,6 +191,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                         ),
                       ),
                       SizedBox(height: 20),
+                      // Symptoms section with background card
                       Card(
                         color: Colors.white,
                         elevation: 5,
@@ -271,17 +208,17 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
-                                  color: Color(0xFF088A6A),
+                                  color: Color(0xFF088A6A), // Color for "Symptoms"
                                 ),
                               ),
                               SizedBox(height: 10),
                               _isLoading
-                                  ? CircularProgressIndicator()
+                                  ? CircularProgressIndicator() // Show loading indicator
                                   : Text(
                                       _symptoms,
                                       style: TextStyle(
                                         fontSize: 16,
-                                        color: Color(0xFF222222),
+                                        color: Color(0xFF222222), // Content in normal color
                                       ),
                                     ),
                             ],
@@ -294,7 +231,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _pickImage,
+        onPressed: _pickImage, // Navigate to the image picker page
         child: Icon(Icons.camera_alt),
         backgroundColor: Color(0xFF088A6A),
       ),
@@ -305,3 +242,4 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
     );
   }
 }
+
