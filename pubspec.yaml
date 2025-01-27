@@ -17,9 +17,8 @@ dependencies:
   cloud_firestore: ^5.6.1
   firebase_storage: ^12.4.0
   shimmer: ^2.0.0  # Add the shimmer package
-  tflite: ^1.1.2 
   path_provider: ^2.0.13
-  tflite_flutter: ^0.11.0
+ 
 flutter:
   uses-material-design: true
   assets:
@@ -38,8 +37,7 @@ flutter:
     - assets/wheat.png
     - assets/carrot.png
     - assets/cabbage.png
-    - assets/crop_disease_model.tflite
-    - assets/data/labels_with_symptoms.json
+
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.0
