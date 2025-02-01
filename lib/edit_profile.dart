@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
-import 'dart:html' as html; // For web file picker
 import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth
 
 class EditProfileScreen extends StatefulWidget {
@@ -62,23 +61,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // Pick image (mobile or web)
   Future<void> _pickImage() async {
     if (kIsWeb) {
-      // Web file picker
-      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
-      uploadInput.accept = 'image/*';
-      uploadInput.click();
-      uploadInput.onChange.listen((e) async {
-        if (uploadInput.files!.isNotEmpty) {
-          final reader = html.FileReader();
-          final file = uploadInput.files!.first;
-          reader.readAsArrayBuffer(file);
-          reader.onLoadEnd.listen((_) {
-            setState(() {
-              _selectedImageBytes = reader.result as Uint8List;
-              _selectedImageName = file.name;
-            });
-          });
-        }
-      });
+      // Web file picker is not supported in this version
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Image picking is not supported on web in this version.")),
+      );
     } else {
       // Mobile file picker
       final ImagePicker picker = ImagePicker();
@@ -117,22 +103,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       };
 
       // Upload image if selected
-      if (_selectedImageFile != null || _selectedImageBytes != null) {
+      if (_selectedImageFile != null) {
         try {
           final storageRef = FirebaseStorage.instance.ref();
           final imageRef = storageRef.child('profile_images/${user.uid}.jpg');
 
           String imageUrl = _imageUrl ?? '';
 
-          if (kIsWeb && _selectedImageBytes != null) {
-            // Upload image as bytes (web)
-            await imageRef.putData(_selectedImageBytes!);
-            imageUrl = await imageRef.getDownloadURL();
-          } else if (_selectedImageFile != null) {
-            // Upload image file (mobile)
-            await imageRef.putFile(_selectedImageFile!);
-            imageUrl = await imageRef.getDownloadURL();
-          }
+          // Upload image file (mobile)
+          await imageRef.putFile(_selectedImageFile!);
+          imageUrl = await imageRef.getDownloadURL();
 
           profileData['imageUrl'] = imageUrl; // Store image URL in Firestore
           setState(() {
@@ -189,14 +169,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   radius: 50,
                   backgroundImage: _selectedImageFile != null
                       ? FileImage(_selectedImageFile!) // Mobile
-                      : _selectedImageBytes != null
-                          ? MemoryImage(_selectedImageBytes!) // Web
-                          : _imageUrl != null
-                              ? NetworkImage(_imageUrl!) // Firestore URL
-                              : null,
-                  child: _selectedImageFile == null &&
-                          _selectedImageBytes == null &&
-                          _imageUrl == null
+                      : _imageUrl != null
+                          ? NetworkImage(_imageUrl!) // Firestore URL
+                          : null,
+                  child: _selectedImageFile == null && _imageUrl == null
                       ? Icon(Icons.person, size: 50, color: Colors.grey)
                       : null,
                 ),
