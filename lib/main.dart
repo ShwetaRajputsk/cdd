@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:typed_data';
+import 'chat.dart';
 
 // Firebase imports
 import 'package:firebase_core/firebase_core.dart';
@@ -11,7 +8,6 @@ import 'firebase_options.dart';
 
 // Screen imports
 import 'splash_screen.dart';
-import 'camera_screen.dart';
 import 'onboardingscreen.dart';
 import 'login.dart';
 import 'signup.dart';
@@ -51,9 +47,10 @@ class MyApp extends StatelessWidget {
         '/selectYourCrop': (context) => SelectYourCropPage(selectedCrops: []),
         '/diseaseDetect': (context) => CropDiseaseHome(),
         '/account': (context) => AccountPage(),
-        '/editProfile': (context) => EditProfilePage(),
+        '/editProfile': (context) => EditProfileScreen(),
         '/community': (context) => CommunityPage(), // Add CommunityPage to routes
         '/askCommunity': (context) => ask.AskCommunityScreen(), // Add AskCommunityScreen to routes
+        '/chat': (context) => ChatPage(), // Add ChatPage route
       },
     );
   }
