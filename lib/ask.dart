@@ -1,9 +1,13 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart'; // For platform checking
+import 'dart:typed_data';
+import 'dart:html' as html; // For web file picker
+import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth
+
 
 class AskCommunityScreen extends StatefulWidget {
   const AskCommunityScreen({Key? key}) : super(key: key);
@@ -15,7 +19,9 @@ class AskCommunityScreen extends StatefulWidget {
 class _AskCommunityScreenState extends State<AskCommunityScreen> {
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  File? _selectedImage;
+  File? _selectedImageFile; // For mobile
+  Uint8List? _selectedImageBytes; // For web
+  String? _selectedImageName; // For web (file name)
 
   @override
   void dispose() {
@@ -25,56 +31,125 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image =
-        await picker.pickImage(source: ImageSource.gallery); // Use camera if needed
-    if (image != null) {
-      setState(() {
-        _selectedImage = File(image.path);
+    if (kIsWeb) {
+      // Web file picker
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
+      uploadInput.onChange.listen((e) async {
+        if (uploadInput.files!.isNotEmpty) {
+          final reader = html.FileReader();
+          final file = uploadInput.files!.first;
+          reader.readAsArrayBuffer(file);
+          reader.onLoadEnd.listen((_) {
+            setState(() {
+              _selectedImageBytes = reader.result as Uint8List;
+              _selectedImageName = file.name;
+            });
+          });
+        }
       });
+    } else {
+      // Mobile file picker
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        setState(() {
+          _selectedImageFile = File(image.path);
+        });
+      }
     }
   }
 
 Future<void> _submitPost() async {
-  final question = _questionController.text;
-  final description = _descriptionController.text;
+  final question = _questionController.text.trim();
+  final description = _descriptionController.text.trim();
 
-  if (question.isNotEmpty && description.isNotEmpty) {
-    final postRef = FirebaseFirestore.instance.collection('community_posts').doc();
+  // Validate fields
+  if (question.isEmpty || description.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Question and description cannot be empty")),
+    );
+    return;
+  }
 
-    Map<String, dynamic> postData = {
-      'question': question,
-      'description': description,
-      'timestamp': FieldValue.serverTimestamp(),
-    };
+  final postRef = FirebaseFirestore.instance.collection('community_posts').doc();
 
-    if (_selectedImage != null) {
-      try {
-        final storageRef = FirebaseStorage.instance.ref();
-        final imageRef = storageRef.child('community_images/${postRef.id}.jpg');
-        await imageRef.putFile(_selectedImage!);
+  // Get the current user's data
+  final user = FirebaseAuth.instance.currentUser;
 
-        // Get the image URL after upload
-        final imageUrl = await imageRef.getDownloadURL();
-        postData['imageUrl'] = imageUrl; // Store the image URL in Firestore
-        print("Image URL: $imageUrl");
-      } catch (e) {
-        print("Error uploading image: $e");
-      }
-    }
-
-    try {
-      // Log the post data before saving
-      print("Post data before saving: $postData");
-
-      // Save the post data (including image URL if available) in Firestore
-      await postRef.set(postData);
-      Navigator.pop(context);
-    } catch (e) {
-      print("Error saving post: $e");
+  // Fetch the user's name from Firestore
+  String userName = '';
+  if (user != null) {
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    if (userDoc.exists) {
+      userName = userDoc.data()?['name'] ?? '';
     }
   }
+
+  // If name is not set, fallback to 'Anonymous'
+  userName = userName.isEmpty ? 'Anonymous' : userName;
+
+  final userId = user?.uid ?? '';  // Use user ID
+// Fetch the user's profile image from Firestore
+String userProfileImage = '';
+if (user != null) {
+  final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  if (userDoc.exists) {
+    userProfileImage = userDoc.data()?['imageUrl'] ?? ''; // Fetch imageUrl from Firestore
+  }
 }
+
+  Map<String, dynamic> postData = {
+    'question': question,
+    'description': description,
+    'timestamp': FieldValue.serverTimestamp(),
+    'userName': userName,  // Use the fetched userName
+    'userId': userId,      // Add user's ID
+    'userProfileImage': userProfileImage,  // Add user's profile image URL
+  };
+
+  // Upload image if selected
+  if (_selectedImageFile != null || _selectedImageBytes != null) {
+    try {
+      final storageRef = FirebaseStorage.instance.ref();
+      final imageRef = storageRef.child('community_images/${postRef.id}.jpg');
+
+      if (kIsWeb && _selectedImageBytes != null) {
+        // Upload image as bytes (web)
+        await imageRef.putData(_selectedImageBytes!);
+      } else if (_selectedImageFile != null) {
+        // Upload image file (mobile)
+        await imageRef.putFile(_selectedImageFile!);
+      }
+
+      final imageUrl = await imageRef.getDownloadURL();
+      postData['imageUrl'] = imageUrl;
+      print("Image URL: $imageUrl");
+    } catch (e) {
+      print("Error uploading image: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error uploading image")),
+      );
+      return;
+    }
+  }
+
+  try {
+    await postRef.set(postData);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Post submitted successfully")),
+    );
+    Navigator.pop(context);
+  } catch (e) {
+    print("Error saving post: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error saving post: $e")),
+    );
+  }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -114,17 +189,17 @@ Future<void> _submitPost() async {
                   ),
                 ),
               ),
-              if (_selectedImage != null)
+              if (_selectedImageFile != null || _selectedImageBytes != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: kIsWeb // Check if the platform is web
-                      ? Image.network(
-                          _selectedImage!.path, // Use the network URL for web
+                  child: kIsWeb
+                      ? Image.memory(
+                          _selectedImageBytes!,
                           height: 150,
                           fit: BoxFit.cover,
                         )
                       : Image.file(
-                          _selectedImage!, // Use the file image on mobile
+                          _selectedImageFile!,
                           height: 150,
                           fit: BoxFit.cover,
                         ),
@@ -252,20 +327,13 @@ Future<void> _submitPost() async {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 56,
                 child: ElevatedButton(
                   onPressed: _submitPost,
+                  child: const Text('Send'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[600],
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Send',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
