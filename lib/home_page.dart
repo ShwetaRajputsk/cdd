@@ -4,11 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'select_your_crop_page.dart';
 import 'disease_detect.dart';
 import 'account.dart'; // Import the Account Page
+import 'community.dart'; // Import CommunityPage
+import 'chat.dart'; // Import ChatPage
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'custom_app_bar.dart';
 import 'bottom_navigation_bar.dart';
-import 'community.dart'; // Import CommunityPage
 
 void main() {
   runApp(MyApp());
@@ -29,13 +30,14 @@ class MyApp extends StatelessWidget {
         '/home': (context) => CropDiseaseHome(),
         '/account': (context) => AccountPage(), // Add the Account Page route
         '/community': (context) => CommunityPage(), // Add the Community Page route
+        '/chat': (context) => ChatPage(), // Add the ChatPage route
       },
     );
   }
 }
 
 class WeatherService {
-  final String apiKey = 'YOUR_API_KEY_HERE';
+  final String apiKey = '701e6d2b2d8ad3fbec985d3c8a9202ee';
 
   Future<Map<String, dynamic>> fetchWeather(String location) async {
     final response = await http.get(
@@ -93,23 +95,23 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Save crops to Firestore
-  Future<void> _saveCropsToFirestore() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      try {
-        DocumentReference userDocRef = _firestore.collection('users').doc(user.uid);
-        await userDocRef.set({
-          'crops': _selectedCrops,
-        });
-        print('Crops saved: $_selectedCrops');
-      } catch (e) {
-        print('Error saving crops to Firestore: $e');
-      }
-    } else {
-      print('No user is currently signed in');
+// Save crops to Firestore
+Future<void> _saveCropsToFirestore() async {
+  User? user = _auth.currentUser;
+  if (user != null) {
+    try {
+      DocumentReference userDocRef = _firestore.collection('users').doc(user.uid);
+      await userDocRef.update({
+        'crops': _selectedCrops,
+      });
+      print('Crops saved: $_selectedCrops');
+    } catch (e) {
+      print('Error saving crops to Firestore: $e');
     }
+  } else {
+    print('No user is currently signed in');
   }
+}
 
   // 🔁 Handle bottom navigation bar item taps
   void _onItemTapped(int index) {
@@ -264,6 +266,17 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
+      ),
+      // Floating Action Button for Chat
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ChatPage()), // Navigate to ChatPage
+          );
+        },
+        child: Icon(Icons.chat),
+        backgroundColor: Colors.green,
       ),
     );
   }
