@@ -4,6 +4,7 @@ import 'community.dart';
 import 'disease_detect.dart';
 import 'account.dart';
 
+
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
@@ -31,6 +32,11 @@ class CustomBottomNavigationBar extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (context) => CropDiseaseHome()),
           );
+          //  } else if (index == 3) {
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(builder: (context) => store()),
+          // );
         } else if (index == 4) {
           Navigator.push(
             context,
