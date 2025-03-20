@@ -47,7 +47,7 @@ class _AccountPageState extends State<AccountPage> {
         // Customize the AppBar
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Image.asset('assets/logo.png'), // Replace with your logo path
+          child: Image.asset('assets/Logo.png'), // Replace with your logo path
         ),
         title: const Text(
           'Account',
