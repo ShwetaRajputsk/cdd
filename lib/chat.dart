@@ -242,19 +242,12 @@ Widget build(BuildContext context) {
             ),
             const Spacer(),
              
-TextButton(
+IconButton(
+  icon: const Icon(Icons.delete, color: Colors.red), // Trash bin icon
   onPressed: () async {
     await _clearChatHistory(); // Clear chat history when tapped
   },
-  child: const Text(
-    'Clear History',
-    style: TextStyle(
-      color: Colors.red,  // Red color to signify the clear history action
-      fontWeight: FontWeight.bold,
-      fontSize: 16,  // You can adjust the size as needed
-    ),
-  ),
-)
+),
           ],
         ),
       ),
