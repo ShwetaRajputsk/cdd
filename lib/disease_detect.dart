@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'custom_app_bar.dart';
 import 'bottom_navigation_bar.dart';
+import 'prediction.dart'; // Import the prediction screen
 
 class CropDiseaseHome extends StatefulWidget {
   @override
@@ -15,8 +16,6 @@ class CropDiseaseHome extends StatefulWidget {
 
 class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   Uint8List? _imageData; // To hold the selected image data
-  String _prediction = '';
-  String _symptoms = ''; // Variable to hold symptoms
   bool _isLoading = false; // Add loading state
   int _currentIndex = 2; // Track the current index for bottom navigation
 
@@ -76,7 +75,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
     });
 
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('https://crop-disease-model.onrender.com/predict'));
+      final request = http.MultipartRequest('POST', Uri.parse('https://cddnew-2.onrender.com/predict'));
       request.files.add(http.MultipartFile.fromBytes('image', imageData, filename: 'image.jpg'));
 
       final response = await request.send();
@@ -85,17 +84,31 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
 
       final jsonResponse = jsonDecode(result);
 
+      String prediction = jsonResponse['prediction'];
+      String symptoms = (jsonResponse['symptoms'] as List).join('\n');
+
       setState(() {
-        _prediction = jsonResponse['prediction']; 
-        _symptoms = (jsonResponse['symptoms'] as List).join('\n');
         _isLoading = false; // Set loading state to false after the response
       });
+
+      // Navigate to the prediction screen after the prediction is ready
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PlantHealthScreen(
+            imageData: _imageData!,
+            diseaseName: prediction,
+            symptoms: symptoms,
+          ),
+        ),
+      );
     } catch (e) {
       setState(() {
-        _prediction = 'Error: $e'; 
-        _symptoms = ''; 
         _isLoading = false; // Set loading state to false in case of error
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -154,77 +167,20 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                 ? Text('No image selected.', style: TextStyle(color: Color(0xFF222222)))
                 : Column(
                     children: [
-                      Image.memory(_imageData!, height: 200, width: 200), // Display captured or uploaded image
+                      // Image.memory(_imageData!, height: 200, width: 200), // Display captured or uploaded image
                       SizedBox(height: 20),
-                      // Prediction section with background card
-                      Card(
-                        color: Colors.white,
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                      // Show loading indicator while processing
+                      if (_isLoading)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildLoadingCircle(Colors.green),
+                            SizedBox(width: 10),
+                            _buildLoadingCircle(Colors.green),
+                            SizedBox(width: 10),
+                            _buildLoadingCircle(Colors.green),
+                          ],
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Prediction:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Color(0xFF088A6A), // Color for "Prediction"
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              _isLoading
-                                  ? CircularProgressIndicator() // Show loading indicator
-                                  : Text(
-                                      _prediction,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Color(0xFF222222), // Content in normal color
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      // Symptoms section with background card
-                      Card(
-                        color: Colors.white,
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Symptoms:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Color(0xFF088A6A), // Color for "Symptoms"
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              _isLoading
-                                  ? CircularProgressIndicator() // Show loading indicator
-                                  : Text(
-                                      _symptoms,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Color(0xFF222222), // Content in normal color
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
           ],
@@ -241,5 +197,16 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
       ),
     );
   }
-}
 
+  // Helper method to build a loading circle
+  Widget _buildLoadingCircle(Color color) {
+    return Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
