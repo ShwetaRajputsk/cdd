@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
 }
 
 class WeatherService {
-  final String apiKey = '701e6d2b2d8ad3fbec985d3c8a9202ee';
+  final String apiKey = '3425e18a2e2aa355b35af5bd268e3dfe';
 
   Future<Map<String, dynamic>> fetchWeather(String location) async {
     final response = await http.get(
