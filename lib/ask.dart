@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
-import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:easy_localization/easy_localization.dart'; // For .tr()
 
 class AskCommunityScreen extends StatefulWidget {
   const AskCommunityScreen({Key? key}) : super(key: key);
@@ -59,7 +60,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     // Validate fields
     if (question.isEmpty || description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Question and description cannot be empty")),
+        SnackBar(content: Text("ask_community.validation_empty".tr())),
       );
       return;
     }
@@ -79,7 +80,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     }
 
     // If name is not set, fallback to 'Anonymous'
-    userName = userName.isEmpty ? 'Anonymous' : userName;
+    userName = userName.isEmpty ? 'ask_community.anonymous'.tr() : userName;
 
     final userId = user?.uid ?? ''; // Use user ID
 
@@ -121,7 +122,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
       } catch (e) {
         print("Error uploading image: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error uploading image")),
+          SnackBar(content: Text("ask_community.image_upload_error".tr())),
         );
         return;
       }
@@ -130,13 +131,13 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     try {
       await postRef.set(postData);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Post submitted successfully")),
+        SnackBar(content: Text("ask_community.post_success".tr())),
       );
       Navigator.pop(context);
     } catch (e) {
       print("Error saving post: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error saving post: $e")),
+        SnackBar(content: Text("${"ask_community.post_error".tr()}: $e")),
       );
     }
   }
@@ -152,9 +153,9 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Ask Community',
-          style: TextStyle(
+        title: Text(
+          'ask_community.title'.tr(),
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -170,7 +171,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
               OutlinedButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.image_outlined),
-                label: const Text('Add image'),
+                label: Text('ask_community.add_image'.tr()),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(width: 2),
                   padding: const EdgeInsets.symmetric(
@@ -195,9 +196,9 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                         ),
                 ),
               const SizedBox(height: 16),
-              const Text(
-                'Improve the probability of receiving the right answer',
-                style: TextStyle(
+              Text(
+                'ask_community.improve_probability'.tr(),
+                style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 16,
                 ),
@@ -205,7 +206,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: () {},
-                child: const Text('Add crop'),
+                child: Text('ask_community.add_crop'.tr()),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(width: 2),
                   padding: const EdgeInsets.symmetric(
@@ -215,9 +216,9 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Your question to the community',
-                style: TextStyle(
+              Text(
+                'ask_community.your_question'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
                 ),
@@ -241,12 +242,12 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       controller: _questionController,
                       maxLength: 200,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        hintText: "Add a question indicating what's wrong with your crop",
-                        border: OutlineInputBorder(
+                      decoration: InputDecoration(
+                        hintText: "ask_community.question_hint".tr(),
+                        border: const OutlineInputBorder(
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: EdgeInsets.all(16),
+                        contentPadding: const EdgeInsets.all(16),
                       ),
                       onChanged: (text) => setState(() {}),
                     ),
@@ -254,7 +255,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       right: 8,
                       bottom: 8,
                       child: Text(
-                        '${_questionController.text.length} / 200 Characters',
+                        '${_questionController.text.length} / 200 ${"ask_community.characters".tr()}',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,
@@ -265,9 +266,9 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Description of your problem',
-                style: TextStyle(
+              Text(
+                'ask_community.description'.tr(),
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
                 ),
@@ -291,12 +292,12 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       controller: _descriptionController,
                       maxLength: 2500,
                       maxLines: 4,
-                      decoration: const InputDecoration(
-                        hintText: 'Describe specialities such as change of leaves, root colour, bugs, tears...',
-                        border: OutlineInputBorder(
+                      decoration: InputDecoration(
+                        hintText: 'ask_community.description_hint'.tr(),
+                        border: const OutlineInputBorder(
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: EdgeInsets.all(16),
+                        contentPadding: const EdgeInsets.all(16),
                       ),
                       onChanged: (text) => setState(() {}),
                     ),
@@ -304,7 +305,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       right: 8,
                       bottom: 8,
                       child: Text(
-                        '${_descriptionController.text.length} / 2500 Characters',
+                        '${_descriptionController.text.length} / 2500 ${"ask_community.characters".tr()}',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,
@@ -319,7 +320,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _submitPost,
-                  child: const Text('Send'),
+                  child: Text('ask_community.send'.tr()),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
