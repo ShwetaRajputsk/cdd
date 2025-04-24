@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'edit_profile.dart'; // Import the EditProfileScreen
-import 'login.dart'; // Import the LoginPage for logout navigation
+import 'edit_profile.dart';
+import 'login.dart';
 import 'bottom_navigation_bar.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({Key? key}) : super(key: key);
@@ -24,55 +25,55 @@ class _AccountPageState extends State<AccountPage> {
     _loadUserProfile();
   }
 
-  // Load user profile data (name, email, and image) from Firestore
   Future<void> _loadUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Fetch user profile data from Firestore
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (doc.exists) {
-        setState(() {
-          _imageUrl = doc['imageUrl']; // Fetch the image URL from Firestore
-          _name = doc['name']; // Fetch the name from Firestore
-          _email = doc['email']; // Fetch the email from Firestore
-        });
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          Map<String, dynamic>? data = doc.data();
+          if (data != null) {
+            setState(() {
+              _imageUrl = data['imageUrl'] ?? '';
+              _name = data['name'] ?? 'No Name';
+              _email = data['email'] ?? 'No Email';
+            });
+          }
+        }
+      } catch (e) {
+        print("Error loading user profile: $e");
       }
     }
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // Customize the AppBar
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Image.asset('assets/Logo.png'), // Replace with your logo path
+          child: Image.asset('assets/Logo.png'),
         ),
-        title: const Text(
-          'Account',
+        title: Text(
+          'account'.tr(),
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black, // Customize the title color
+            color: Colors.black,
           ),
         ),
         centerTitle: true,
-        elevation: 0, // Remove the shadow
-        backgroundColor: Colors.white, // Set the background color
-        iconTheme: const IconThemeData(
-          color: Colors.black, // Customize the back button color
-        ),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Section
             InkWell(
               onTap: () {
-                // Navigate to the EditProfileScreen
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const EditProfileScreen()),
@@ -80,42 +81,38 @@ class _AccountPageState extends State<AccountPage> {
               },
               child: Row(
                 children: [
-                  // Profile Image
                   _imageUrl != null
                       ? CircleAvatar(
                           radius: 30,
                           backgroundImage: NetworkImage(_imageUrl!),
                         )
-                      : const CircleAvatar(
+                      : CircleAvatar(
                           radius: 30,
                           backgroundColor: Colors.grey,
                           child: Icon(Icons.person, size: 30),
                         ),
-                  const SizedBox(width: 16),
-                  // Name and Email
+                  SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _name ?? 'Shweta Rajput',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4),
                         Text(
                           _email ?? 'shwetarajputskk@gmail.com',
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios, size: 16),
+                  Icon(Icons.arrow_forward_ios, size: 16),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Upgrade Plan Section
+            SizedBox(height: 24),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -125,49 +122,44 @@ class _AccountPageState extends State<AccountPage> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    'Upgrade Plan to Unlock More!',
+                  Text(
+                    'upgradePlan'.tr(),
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Enjoy all the benefits and explore more possibilities',
+                  SizedBox(height: 8),
+                  Text(
+                    'upgradeBenefits'.tr(),
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Handle upgrade plan action
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                    ),
-                    child: const Text('Upgrade Plan'),
-                  ),
+                  SizedBox(height: 16),
+             ElevatedButton(
+  onPressed: () {},
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.green,
+    foregroundColor: Colors.white,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+    ),
+    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+  ),
+  child: Text('upgradePlan'.tr()),
+),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Settings Sections
-            _buildSettingItem(Icons.notifications, 'Notifications'),
-            _buildSettingItem(Icons.security, 'Account & Security'),
-            _buildSettingItem(Icons.credit_card, 'Billing & Subscriptions'),
-            _buildSettingItem(Icons.language, 'Language & Region'),
-            _buildSettingItem(Icons.palette, 'App Appearance'),
-            _buildSettingItem(Icons.help_outline, 'Help & Support'),
-            const SizedBox(height: 1),
-
-            // Logout Button
+            SizedBox(height: 24),
+            _buildSettingItem(Icons.notifications, 'notifications'.tr()),
+            _buildSettingItem(Icons.security, 'accountSecurity'.tr()),
+            _buildSettingItem(Icons.credit_card, 'billing'.tr()),
+            _buildSettingItem(Icons.language, 'languageRegion'.tr(), onTap: () {
+              _showLanguageDialog(context);
+            }),
+            _buildSettingItem(Icons.palette, 'appAppearance'.tr()),
+            _buildSettingItem(Icons.help_outline, 'helpSupport'.tr()),
+            SizedBox(height: 1),
             InkWell(
               onTap: () {
-                // Navigate to the LoginScreen
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => LoginScreen()),
@@ -177,10 +169,10 @@ class _AccountPageState extends State<AccountPage> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Row(
                   children: [
-                    const Icon(Icons.logout, color: Colors.red),
-                    const SizedBox(width: 16),
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 16),
                     Text(
-                      'Logout',
+                      'logout'.tr(),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -194,7 +186,6 @@ class _AccountPageState extends State<AccountPage> {
           ],
         ),
       ),
-      // Bottom Navigation Bar
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
@@ -202,31 +193,61 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  // Handle bottom navigation item tap
   void _onItemTapped(int index) {
     setState(() {
       _currentIndex = index;
     });
   }
 
-  // Helper method to build setting items with icons
-  Widget _buildSettingItem(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 24),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('languageRegion'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('English'),
+                onTap: () {
+                  context.setLocale(Locale('en'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: Text('हिंदी'),
+                onTap: () {
+                  context.setLocale(Locale('hi'));
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ),
-          const Icon(Icons.arrow_forward_ios, size: 16),
-        ],
-      ),
+        );
+      },
     );
   }
 
+  Widget _buildSettingItem(IconData icon, String title, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 24),
+            SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
 }
