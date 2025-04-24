@@ -141,7 +141,7 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
 
                   // Get Started button with arrows
                   Padding(
