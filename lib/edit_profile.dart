@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth
 
 class EditProfileScreen extends StatefulWidget {
@@ -99,7 +98,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'email': email,
         'phone': phone,
         'gender': gender,
-        'birthdate': birthdate,
       };
 
       // Upload image if selected
@@ -126,10 +124,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           return;
         }
       }
-
       // Update Firestore profile data
       try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).update(profileData);
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set(profileData, SetOptions(merge: true));
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Profile updated successfully")),
         );
@@ -141,7 +139,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -199,11 +196,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ],
             ),
             SizedBox(height: 30),
-            buildTextField('Full Name', 'Shweta Rajput', controller: _nameController),
+            buildTextField('Full Name', 'your name', controller: _nameController),
             SizedBox(height: 20),
-            buildTextField('Email', 'shwetakashyap942001@gmail.com', controller: _emailController, icon: Icons.email),
+            buildTextField('Email', 'yourid@gmail.com', controller: _emailController, icon: Icons.email),
             SizedBox(height: 20),
-            buildTextField('Phone Number', '9350075177', controller: _phoneController, icon: Icons.phone),
+            buildTextField('Phone Number', '1234567890', controller: _phoneController, icon: Icons.phone),
             SizedBox(height: 20),
             // Gender Dropdown (styled like other fields)
             Column(
@@ -242,7 +239,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ],
             ),
-            
             SizedBox(height: 40),
             // Save Button (moved slightly higher)
             SizedBox(
@@ -268,7 +264,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
   }
-
   Widget buildTextField(String label, String placeholder, {IconData? icon, required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
