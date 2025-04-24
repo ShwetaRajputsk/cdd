@@ -3,6 +3,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'dart:async';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({Key? key}) : super(key: key);
@@ -13,373 +18,422 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
-  final List<Map<String, String>> _messages = []; // Stores chat history
+  final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
-  final String _apiKey = "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";
+  final ScrollController _scrollController = ScrollController();
+  final String _apiKey = "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";
   final String _apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+  List<String> _prefilledQuestions = [
+    'bestCropsSummer'.tr(),
+    'protectCropsDiseases'.tr(),
+    'idealIrrigationSystem'.tr(),
+    'sustainableFarmingPractices'.tr(),
+  ];
 
-@override
+  @override
   void initState() {
     super.initState();
-    _loadChatHistory(); // Load history on page load
+    _loadChatHistory();
   }
 
-  // Method to load chat history from Firestore
- // ...existing code...
-
-Future<void> _loadChatHistory() async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return; // Ensure user is logged in
-  final userId = user.uid; // Get the current user's unique ID
-
-  final chatHistoryRef = FirebaseFirestore.instance
-      .collection('chat_history')
-      .doc(userId)
-      .collection('messages')
-      .orderBy('timestamp', descending: true);
-
-  final querySnapshot = await chatHistoryRef.get();
-  final List<Map<String, String>> historyMessages = [];
-
-  for (var doc in querySnapshot.docs) {
-    historyMessages.add({
-      'role': 'assistant',
-      'content': doc['bot_response'],
-    });
-    historyMessages.add({
-      'role': 'user',
-      'content': doc['user_query'],
-    });
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  setState(() {
-    _messages.insertAll(0, historyMessages.reversed.toList());
-  });
-}
-// ...existing code...
+  Future<void> _loadChatHistory() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  // Method to clear chat history
-Future<void> _clearChatHistory() async {
-  final userId = "user_unique_id"; // Use the current user's unique ID
-  final chatHistoryRef = FirebaseFirestore.instance
-      .collection('chat_history')
-      .doc(userId)
-      .collection('messages');
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('chat_history')
+          .doc(user.uid)
+          .collection('messages')
+          .orderBy('timestamp')
+          .get();
 
-  // Delete all messages
-  final batch = FirebaseFirestore.instance.batch();
-  final querySnapshot = await chatHistoryRef.get();
-  for (var doc in querySnapshot.docs) {
-    batch.delete(doc.reference);
-  }
-
-  await batch.commit();
-  setState(() {
-    _messages.clear(); // Clear the local chat messages as well
-  });
-}
-
-  // Prefilled Questions (Initially Static)
-List<String> _prefilledQuestions = [
-  'What are the best crops to grow in Haryana during the summer?',
-  'How can I protect my crops from common diseases?',
-  'What is the ideal irrigation system for my crops?',
-  'Can you suggest sustainable farming practices for my farm?',
-];
-
-
-  // Function to Update Prefilled Questions Dynamically
-void _updatePrefilledQuestions(String userQuery) async {
-  String apiKey = "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"; // Use your actual key
-  String model = "llama3-8b-8192"; 
-  String prompt = "Generate exactly 4 short, clear follow-up questions based on this query: \"$userQuery\". Only return the 4 questions in a numbered list format, without any extra text.";
-
-  try {
-    var response = await http.post(
-      Uri.parse("https://api.groq.com/openai/v1/chat/completions"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $apiKey",
-      },
-      body: jsonEncode({
-        "model": model,
-        "messages": [
-          {"role": "system", "content": "You are an expert in agriculture. Generate only logical follow-up questions."},
-          {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 100,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      var data = jsonDecode(response.body);
-      if (data["choices"] != null && data["choices"].isNotEmpty) {
-        String content = data["choices"][0]["message"]["content"];
-
-        // Extract questions by removing numbering
-        List<String> generatedQuestions = content
-            .split(RegExp(r'\d+\.\s')) // Splitting based on "1. ", "2. " etc.
-            .where((q) => q.trim().isNotEmpty)
-            .toList();
+      if (mounted) {
         setState(() {
-          _prefilledQuestions = generatedQuestions.take(4).toList();
+          _messages.clear();
+          for (var doc in querySnapshot.docs) {
+            final data = doc.data();
+            _messages.add({
+              'role': 'user',
+              'content': data['user_query'] ?? '',
+              'timestamp': data['timestamp']?.toDate(),
+            });
+            if (data['bot_response'] != null && data['bot_response'].isNotEmpty) {
+              _messages.add({
+                'role': 'assistant',
+                'content': data['bot_response'] ?? '',
+                'timestamp': data['timestamp']?.toDate(),
+              });
+            }
+          }
+          // Sort messages by timestamp
+          _messages.sort((a, b) => (a['timestamp'] as DateTime).compareTo(b['timestamp'] as DateTime));
         });
-      } else {
-        setState(() {
-          _prefilledQuestions = ["No follow-up questions generated. Try again!"];
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
         });
       }
-    } else {
-      setState(() {
-        _prefilledQuestions = ["Couldn't generate follow-up questions. Please try again!"];
-      });
+    } catch (e) {
+      debugPrint("Error loading chat history: $e");
     }
-  } catch (e) {
-    setState(() {
-      _prefilledQuestions = ["Error occurred. Please try again!"];
-    });
   }
-}
-  // Function to send message to Groq API with better response handling
-Future<void> _sendMessage() async {
-  String userInput = _controller.text.trim();
-  if (userInput.isEmpty) return;
 
-  setState(() {
-    _messages.add({"role": "user", "content": userInput});
-    _controller.clear();
-    _isLoading = true;
-  });
+  Future<void> _clearChatHistory() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-  try {
-    final response = await http.post(
-      Uri.parse(_apiUrl),
-      headers: {
-        "Authorization": "Bearer $_apiKey",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "model": "llama3-8b-8192",
-        "messages": _messages,
-        "temperature": 0.7,
-        "max_tokens": 800,
-        "top_p": 1,
-        "n": 1,
-        "stream": false
-      }),
-    );
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('chat_history')
+          .doc(user.uid)
+          .collection('messages')
+          .get();
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      String botResponse = data['choices'][0]['message']['content'] ?? '';
-      botResponse = botResponse.replaceAll("\n\n", "\n").trim();
+      for (var doc in querySnapshot.docs) {
+        batch.delete(doc.reference);
+      }
 
-      setState(() {
-        _messages.add({"role": "assistant", "content": botResponse});
-        _updatePrefilledQuestions(userInput); // Update follow-up questions
-      });
-
-      // Store question and response in Firestore
-      await _saveMessageToHistory(userInput, botResponse);
-    } else {
-      throw Exception("API Error: ${response.statusCode}");
+      await batch.commit();
+      
+      if (mounted) {
+        setState(() {
+          _messages.clear();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error clearing chat history: $e");
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'role': 'assistant',
+            'content': 'clearHistoryError'.tr(),
+            'timestamp': DateTime.now(),
+          });
+        });
+      }
     }
-  } catch (e) {
-    setState(() {
-      _messages.add({
-        "role": "assistant",
-        "content": "Sorry, I couldn't process your request. Please try again."
-      });
-    });
-  } finally {
-    setState(() {
-      _isLoading = false;
-    });
   }
-}
 
-// ...existing code...
+  Future<void> _sendMessage() async {
+    final userInput = _controller.text.trim();
+    if (userInput.isEmpty || _isLoading) return;
 
-Future<void> _saveMessageToHistory(String userQuery, String botResponse) async {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return; // Ensure user is logged in
-  final userId = user.uid; // Get the current user's unique ID
+    final userMessage = {
+      'role': 'user',
+      'content': userInput,
+      'timestamp': DateTime.now(),
+    };
 
-  final chatHistoryRef = FirebaseFirestore.instance.collection('chat_history').doc(userId);
+    setState(() {
+      _messages.add(userMessage);
+      _controller.clear();
+      _isLoading = true;
+    });
+    _scrollToBottom();
 
-  await chatHistoryRef.collection('messages').add({
-    'user_query': userQuery,
-    'bot_response': botResponse,
-    'timestamp': FieldValue.serverTimestamp(),
-  });
-}
-// ...existing code...
-
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: PreferredSize(
-      preferredSize: Size.fromHeight(60), // Adjust the height of your custom AppBar
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[300]!),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-            ),
-            const Text(
-              'Cropfit Digital Assistant',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-             
-IconButton(
-  icon: const Icon(Icons.delete, color: Colors.red), // Trash bin icon
-  onPressed: () async {
-    await _clearChatHistory(); // Clear chat history when tapped
-  },
-),
+    // Save user message to Firestore first
+    final docRef = await FirebaseFirestore.instance
+        .collection('chat_history')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .collection('messages')
+        .add({
+      'user_query': userInput,
+      'bot_response': '',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    try {
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $_apiKey",
+        },
+        body: jsonEncode({
+          "model": "llama3-70b-8192",
+          "messages": [
+           {
+      "role": "system",
+      "content": "You are a agricultural assistant. You can ask questions or choose from the suggestions below.",
+    },
+            ..._messages.map((msg) => {
+              "role": msg["role"],
+              "content": msg["content"]
+            }).toList()
           ],
-        ),
-      ),
-    ),
-      body: SafeArea(
-        child: Column(
-          children: [
-           // Welcoming Message Section
-Container(
-  padding: const EdgeInsets.all(16),
-  decoration: BoxDecoration(
-    color: const Color(0xFFE1F5FE),
-    borderRadius: BorderRadius.circular(8),
-  ),
-  child: Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Icon(
-        Icons.emoji_emotions,
-        color: Colors.blue,
-        size: 24,
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Text(
-          'Welcome to the Cropfit Digital Assistant! How can I assist you today?',
-          style: TextStyle(color: Colors.blue[800]),
-        ),
-      ),
-    ],
-  ),
-),
+          "temperature": 0.7,
+          "max_tokens": 1024,
+          "top_p": 1,
+          "stream": false
+        }),
+      ).timeout(const Duration(seconds: 30));
 
-           // Suggested Questions Section
-Padding(
-  padding: const EdgeInsets.all(16),
-  child: Column(
-    children: [
-      Text(
-        'Ask your queries or choose from the questions below:',
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-        ),
-      ),
-      const SizedBox(height: 8),
-      SizedBox(
-        height: 50, // Adjust height to avoid taking too much space
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _prefilledQuestions.length,
-          separatorBuilder: (context, index) => const SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            return ActionChip(
-              label: Text(_prefilledQuestions[index]),
-              onPressed: () {
-                _controller.text = _prefilledQuestions[index];
-                _sendMessage();
-              },
-            );
-          },
-        ),
-      ),
-    ],
-  ),
-),
-            // Chat Messages Section
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  final msg = _messages[index];
-                  bool isUser = msg["role"] == "user";
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final botResponse = data['choices'][0]['message']['content']?.trim() ?? '';
+        
+        if (botResponse.isEmpty) throw Exception("Empty response");
 
-                  return Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-               child: Container(
-  margin: const EdgeInsets.symmetric(vertical: 4),
-  padding: const EdgeInsets.all(12),
-  decoration: BoxDecoration(
-    color: isUser ? Colors.blue[100] : Colors.green[100],
-    borderRadius: BorderRadius.circular(8),
-  ),
-  child: ConstrainedBox(
-    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-    child: Text(
-      msg["content"]!,
-      style: TextStyle(color: isUser ? Colors.blue[900] : Colors.green[900]),
-      softWrap: true,
-    ),
-  ),
-),
+        final botMessage = {
+          'role': 'assistant',
+          'content': botResponse,
+          'timestamp': DateTime.now(),
+        };
 
-                  );
-                },
-              ),
+        setState(() {
+          _messages.add(botMessage);
+        });
+
+        // Update Firestore with bot response
+        await docRef.update({
+          'bot_response': botResponse,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        
+        _scrollToBottom();
+      } else {
+        throw HttpException("API Error", statusCode: response.statusCode);
+      }
+    } on TimeoutException {
+      _showErrorMessage("timeoutError".tr());
+    } on SocketException {
+      _showErrorMessage("connectionFailed".tr());
+    } on HttpException catch (e) {
+      _showErrorMessage("apiError".tr(args: [e.statusCode.toString()]));
+    } catch (e) {
+      _showErrorMessage("errorProcessingRequest".tr());
+      debugPrint("Error: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _showErrorMessage(String message) {
+    if (mounted) {
+      setState(() {
+        _messages.add({
+          "role": "assistant",
+          "content": message,
+          "timestamp": DateTime.now(),
+        });
+      });
+    }
+  }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('copiedToClipboard'.tr())),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('digitalAssistant'.tr()),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: _clearChatHistory,
+            tooltip: 'clearChat'.tr(),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Welcome Message
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue[100]!),
             ),
+            child: Row(
+              children: [
+                const Icon(Icons.agriculture, color: Colors.blue),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'welcomeMessage'.tr(),
+                    style: TextStyle(
+                      color: Colors.blue[800],
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: CircularProgressIndicator(),
-              ),
+          // Suggested Questions
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'askOrChoose'.tr(),
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _prefilledQuestions.map((question) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ActionChip(
+                          label: Text(question),
+                          onPressed: () {
+                            _controller.text = question;
+                            _sendMessage();
+                          },
+                          backgroundColor: Colors.green[50],
+                          labelStyle: TextStyle(color: Colors.green[800]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-            // Input Area
-            Padding(
+          // Chat Messages
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: InputDecoration(
-                        hintText: 'Ask a question...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final msg = _messages[index];
+                final isUser = msg["role"] == "user";
+
+                return GestureDetector(
+                  onLongPress: () => _copyToClipboard(msg["content"]!),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Align(
+                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.85,
+                        ),
+                        child: Card(
+                          elevation: 1,
+                          color: isUser ? Colors.blue[50] : Colors.green[50],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isUser ? 'You' : 'Assistant',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isUser ? Colors.blue[800] : Colors.green[800],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                               MarkdownBody(
+  data: msg["content"]!,
+  styleSheet: MarkdownStyleSheet(
+    p: TextStyle(
+      color: isUser ? Colors.blue[900] : Colors.green[900],
+      fontSize: 14, // Match your existing text size
+    ),
+    strong: TextStyle(
+      color: isUser ? Colors.blue[900] : Colors.green[900],
+      fontWeight: FontWeight.bold,
+    ),
+  ),
+),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  FloatingActionButton(
-                    onPressed: _sendMessage,
-                    backgroundColor: Colors.blue[600],
-                    child: const Icon(Icons.send),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+
+          // Loading Indicator
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
+
+          // Input Area
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'askQuestionHint'.tr(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: _sendMessage,
+                      ),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                    maxLines: 3,
+                    minLines: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class HttpException implements Exception {
+  final String message;
+  final int statusCode;
+
+  HttpException(this.message, {required this.statusCode});
+
+  @override
+  String toString() => message;
 }
