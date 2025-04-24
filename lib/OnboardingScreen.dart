@@ -1,143 +1,256 @@
 import 'package:flutter/material.dart';
+import 'login.dart';
+import 'home_page.dart';
 
-class OnboardingScreen extends StatefulWidget {
-  @override
-  _OnboardingScreenState createState() => _OnboardingScreenState();
+void main() {
+  runApp(const PlantApp());
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController(initialPage: 0);
-  int _currentPage = 0;
+class PlantApp extends StatelessWidget {
+  const PlantApp({super.key});
 
-  final List<Map<String, String>> onboardingData = [
-    {
-      "image": "assets/healthcheck.png",
-      "title": "Health Check",
-      "description": "Take a picture of your crop or upload an image to detect diseases and receive treatment advice."
-    },
-    {
-      "image": "assets/community.png",
-      "title": "Community",
-      "description": "Ask a question about your crop to receive help from the community."
-    },
-    {
-      "image": "assets/cultivationtips.png",
-      "title": "Cultivation Tips",
-      "description": "Receive farming advice about how to improve your yield."
-    },
-  ];
-
-  void _onPageChanged(int index) {
-    setState(() {
-      _currentPage = index;
-    });
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CropFit',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1C4B0C),
+          primary: const Color(0xFF1C4B0C),
+        ),
+        useMaterial3: true,
+      ),
+      home: const WelcomeScreen(),
+      routes: {
+        '/login': (context) => LoginScreen(),
+        '/home': (context) => HomePage(),
+      },
+    );
   }
+}
+
+class WelcomeScreen extends StatelessWidget {
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              flex: 3,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                itemCount: onboardingData.length,
-                itemBuilder: (context, index) => OnboardingContent(
-                  image: onboardingData[index]["image"]!,
-                  title: onboardingData[index]["title"]!,
-                  description: onboardingData[index]["description"]!,
-                ),
-              ),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Top left plant image
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Image.asset(
+              'assets/images/top_plant.png',
+              width: MediaQuery.of(context).size.width * 0.7,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback if image is not available
+                return Container(
+                  width: MediaQuery.of(context).size.width * 0.7,
+                  height: 300,
+                  color: Colors.transparent,
+                );
+              },
             ),
-            Expanded(
-              flex: 1,
+          ),
+
+          // Bottom right succulents
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Image.asset(
+              'assets/images/bottom_succulents.png',
+              width: MediaQuery.of(context).size.width * 0.8,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback if image is not available
+                return Container(
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  height: 400,
+                  color: Colors.transparent,
+                );
+              },
+            ),
+          ),
+
+          // Center content
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      onboardingData.length,
-                      (index) => buildDot(index),
+                  const SizedBox(height: 32),
+                  // Title with colored "plant" word
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
+                      children: [
+                        const TextSpan(text: "Grow "),
+                        TextSpan(
+                          text: "Smarter",
+                          style: TextStyle(
+                            color: const Color(0xFF1C4B0C),
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const TextSpan(text: ", Farm "),
+                        TextSpan(
+                          text: "Better",
+                          style: TextStyle(
+                            color: const Color(0xFF1C4B0C),
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const TextSpan(text: " With "),
+                        TextSpan(
+                          text: "CropFit",
+                          style: TextStyle(
+                            color: const Color(0xFF1C4B0C),
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const TextSpan(text: " !!"),
+                      ],
                     ),
                   ),
-                  Spacer(),
-_currentPage == onboardingData.length - 1
-    ? ElevatedButton(
-        onPressed: () {
-          Navigator.pushReplacementNamed(context, '/login');  // Change here
-        },
-        child: Text("Get Started"),
-      )
-    : TextButton(
-        onPressed: () {
-          _pageController.nextPage(
-            duration: Duration(milliseconds: 300),
-            curve: Curves.ease,
-          );
-        },
-        child: Text("Next"),
-      ),
-Spacer(),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      "Detect crop diseases instantly, get pro farming tips, and boost your harvest — all in one app.",
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.grey[800],
+                            fontSize: 18,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
+                  // Get Started button with arrows
+                  Padding(
+                    padding: const EdgeInsets.only(right: 50.0, left: 90.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1C4B0C),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.pushReplacementNamed(
+                                    context, '/login');
+                              },
+                              borderRadius: BorderRadius.circular(30),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                                child: Text(
+                                  "Get Started",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Double chevron arrows outside button
+                        Stack(
+                          children: const [
+                            Padding(
+                              padding: EdgeInsets.only(left: 10),
+                              child: Icon(
+                                Icons.chevron_right,
+                                size: 24,
+                                color: Color(0xFF1C4B0C),
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 24,
+                              color: Color(0xFF1C4B0C),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildDot(int index) {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 200),
-      margin: EdgeInsets.only(right: 5),
-      height: 10,
-      width: _currentPage == index ? 20 : 10,
-      decoration: BoxDecoration(
-        color: _currentPage == index ? Colors.green : Colors.grey,
-        borderRadius: BorderRadius.circular(5),
+          ),
+        ],
       ),
     );
   }
 }
 
-class OnboardingContent extends StatelessWidget {
-  final String image, title, description;
-
-  const OnboardingContent({
-    required this.image,
-    required this.title,
-    required this.description,
-  });
+class GetStartedScreen extends StatelessWidget {
+  const GetStartedScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Spacer(),
-        Image.asset(
-          image,
-          height: 300,
-        ),
-        Spacer(),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Welcome to Plant App",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                "Discover the joy of plants and how they can improve your life, home, and wellbeing.",
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.chevron_left, color: Color(0xFF5A8A5E)),
+                label: const Text(
+                  "Back to home",
+                  style: TextStyle(color: Color(0xFF5A8A5E)),
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 10),
-        Text(
-          description,
-          textAlign: TextAlign.center,
-        ),
-        Spacer(),
-      ],
+      ),
     );
   }
 }
