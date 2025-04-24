@@ -82,10 +82,10 @@ class LoginScreen extends StatelessWidget {
                 Center(
                   child: Image.asset(
                     'assets/images/logoo.png',
-                    height: 250,
+                    height: 220,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height:3),
                 Text(
                   'Welcome Back!',
                   style: TextStyle(
