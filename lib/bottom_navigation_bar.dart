@@ -3,6 +3,7 @@ import 'home_page.dart';
 import 'community.dart';
 import 'disease_detect.dart';
 import 'account.dart';
+import 'shop.dart';
 
 
 class CustomBottomNavigationBar extends StatelessWidget {
@@ -32,11 +33,11 @@ class CustomBottomNavigationBar extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (context) => CropDiseaseHome()),
           );
-          //  } else if (index == 3) {
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(builder: (context) => store()),
-          // );
+        } else if (index == 3) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ShopPage()),
+          );
         } else if (index == 4) {
           Navigator.push(
             context,
