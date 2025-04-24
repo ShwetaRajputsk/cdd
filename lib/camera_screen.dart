@@ -1,7 +1,7 @@
-import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'main.dart';  // Import main page where image will be shown
+
 
 class CameraScreen extends StatefulWidget {
   @override
