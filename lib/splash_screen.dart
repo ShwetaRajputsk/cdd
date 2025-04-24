@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'OnboardingScreen.dart'; // Import the Onboarding screen
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home_page.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -10,39 +12,43 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToOnboarding();
+    _navigateToNextScreen();
   }
 
-  _navigateToOnboarding() async {
-    await Future.delayed(Duration(seconds: 3), () {}); // Delay for 3 seconds
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => OnboardingScreen()), // Navigate to Onboarding screen
-    );
+  _navigateToNextScreen() async {
+    await Future.delayed(Duration(seconds: 3));
+    
+    if (mounted) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PlantApp()),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF1C4B0C), // Dark green background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/Logo.png', // Logo image
-              width: 150,
-              height: 150,
+              'assets/images/logoimage.jpg',
+              width: 500,
+              height: 500,
+              fit: BoxFit.contain,
             ),
-            SizedBox(height: 20),
-            Text(
-              "Welcome to Crop Disease Detection",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
-            ),
+            const SizedBox(height: 34),
           ],
         ),
       ),
