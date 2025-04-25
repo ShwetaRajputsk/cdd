@@ -22,11 +22,45 @@ class _HomePageState extends State<HomePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<Map<String, String>> _selectedCrops = [];
   int _currentIndex = 0;
+  String? _userName;
+  String? _userImageUrl;
+
+  String _getGreeting() {
+    var hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'greeting.morning'.tr();
+    } else if (hour < 17) {
+      return 'greeting.afternoon'.tr();
+    } else {
+      return 'greeting.evening'.tr();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _loadCrops();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      try {
+        final doc = await _firestore.collection('users').doc(user.uid).get();
+        if (doc.exists) {
+          Map<String, dynamic>? data = doc.data();
+          if (data != null) {
+            setState(() {
+              _userName = data['name'];
+              _userImageUrl = data['imageUrl'];
+            });
+          }
+        }
+      } catch (e) {
+        print('Error loading user profile: $e');
+      }
+    }
   }
 
   Future<void> _loadCrops() async {
@@ -81,122 +115,308 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(title: 'Cropfit'),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    'selectYourCrop'.tr(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Spacer(),
-                  IconButton(
-                    icon: Icon(Icons.edit, color: Colors.green[700]),
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              SelectYourCropPage(selectedCrops: _selectedCrops),
+              // Custom App Bar
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: _userImageUrl != null && _userImageUrl!.isNotEmpty
+                              ? NetworkImage(_userImageUrl!) as ImageProvider
+                              : AssetImage('assets/profile.png'),
+                          radius: 25,
                         ),
-                      );
-                      if (result != null) {
-                        setState(() {
-                          _selectedCrops = result;
-                        });
-                        await _saveCropsToFirestore();
-                      }
-                    },
-                  ),
-                ],
-              ),
-              Container(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _selectedCrops.length,
-                  itemBuilder: (context, index) {
-                    return _buildCropCard(
-                      _selectedCrops[index]['image']!,
-                      _selectedCrops[index]['name']!,
-                    );
-                  },
+                        SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hi, ${_userName ?? 'User'}!',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              _getGreeting(),
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.notifications_none_outlined),
+                      onPressed: () {},
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 16),
-              Text(
-                'trendingNews'.tr(),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Card(
-                child: ListTile(
-                  title: Text('latestNews'.tr()),
-                  subtitle: Text('learnMore'.tr()),
-                  trailing: Icon(Icons.arrow_forward),
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'beYourCropDoctor'.tr(),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Card(
-                child: ListTile(
-                  title: Text('takePicture'.tr()),
-                  subtitle: Text('seeDiagnosis'.tr()),
-                  trailing: Icon(Icons.camera_alt),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CropDiseaseHome(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'weatherReport'.tr(),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              FutureBuilder<Map<String, dynamic>>(
-                future: WeatherService().fetchWeather('New Delhi'),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(Icons.error, color: Colors.red),
-                        title: Text('error'.tr()),
-                        subtitle: Text('weatherLoadFailed'.tr()),
-                      ),
-                    );
-                  } else {
-                    final weatherData = snapshot.data;
-                    final temperature = weatherData?['current']['temperature'];
-                    final description =
-                        weatherData?['current']['weather_descriptions'][0];
-                    final location = weatherData?['location']['name'];
-                    final region = weatherData?['location']['region'];
-                    final country = weatherData?['location']['country'];
+              SizedBox(height: 10), // Added extra spacing
 
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(Icons.cloud, color: Colors.blue),
-                        title: Text('$location, $region'),
-                        subtitle: Text('$country\n$temperature°C, $description'),
+              // Select Your Crop Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'home.selectCrop'.tr(), // Localized text
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.edit, color: Color(0xFF1C4B0C)),
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    SelectYourCropPage(selectedCrops: _selectedCrops),
+                              ),
+                            );
+                            if (result != null) {
+                              setState(() {
+                                _selectedCrops = result;
+                              });
+                              await _saveCropsToFirestore();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      height: 100,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedCrops.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            width: 80,
+                            margin: EdgeInsets.only(right: 12),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      _selectedCrops[index]['image']!,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  _selectedCrops[index]['name']!,
+                                  style: TextStyle(fontSize: 12),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  }
-                },
+                    ),
+                  ],
+                ),
               ),
+              SizedBox(height: 24),
+
+              // Did You Know Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Container(
+                  padding: EdgeInsets.all(20),
+                  height: 191, // Adjusted height to prevent overflow
+                  decoration: BoxDecoration(
+                    color: Color(0xFF1C4B0C),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'home.didYouKnow'.tr(), // Localized text
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'home.didYouKnowText'.tr(), // Localized text
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 11,
+                              ),
+                            ),
+                            SizedBox(height: 13),
+                            ElevatedButton(
+                              onPressed: () {},
+                              child: Text('home.seeMore'.tr()), // Localized text
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Color(0xFF1C4B0C),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Image.asset(
+                        'assets/images/logoimage.jpg',
+                        height: 140, // Reduced image height to fit container
+                        fit: BoxFit.contain,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 24),
+
+              // Help Your Crop Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'home.helpCrop'.tr(), // Localized text
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildStepItem(Icons.camera_alt, 'home.stepTakePhoto'.tr()), // Localized text
+                              Text('»', style: TextStyle(fontSize: 24, color: Color(0xFF1C4B0C))),
+                              _buildStepItem(Icons.search, 'home.stepAnalyze'.tr()), // Localized text
+                              Text('»', style: TextStyle(fontSize: 24, color: Color(0xFF1C4B0C))),
+                              _buildStepItem(Icons.description, 'home.stepReport'.tr()), // Localized text
+                            ],
+                          ),
+                          SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CropDiseaseHome(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'home.takePicture'.tr(), // Localized text
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF1C4B0C),
+                              minimumSize: Size(double.infinity, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 24),
+
+              // Weather Report Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'home.weatherReport'.tr(), // Localized text
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: WeatherService().fetchWeather('New Delhi'),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        } else {
+                          final hasError = snapshot.hasError || snapshot.data == null;
+                          final currentData = snapshot.data?['current'] as Map<String, dynamic>?;
+                          final locationData = snapshot.data?['location'] as Map<String, dynamic>?;
+
+                          final temperature = hasError
+                              ? '--'
+                              : (currentData?['temperature']?.toString() ?? '--');
+                          final description = hasError
+                              ? '--'
+                              : (currentData?['weather_descriptions']?.first?.toString() ?? '--');
+                          final location = hasError
+                              ? 'New Delhi'
+                              : (locationData?['name']?.toString() ?? 'New Delhi');
+
+                          return _buildWeatherCard(
+                            '$location, Delhi',
+                            'India\n${temperature}°C, $description',
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 24),
             ],
           ),
         ),
@@ -212,8 +432,8 @@ class _HomePageState extends State<HomePage> {
             MaterialPageRoute(builder: (context) => ChatPage()),
           );
         },
-        child: Icon(Icons.chat),
-        backgroundColor: Colors.green,
+        child: const Icon(Icons.chat_rounded, color: Colors.white),
+        backgroundColor: const Color(0xFF1C4B0C),
       ),
     );
   }
@@ -232,10 +452,88 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  Widget _buildStepItem(IconData icon, String text) {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: Color(0xFF1C4B0C), size: 24),
+        ),
+        SizedBox(height: 8),
+        Text(
+          text,
+          style: TextStyle(fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeatherCard(String title, String subtitle) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Color(0xFFE3F2FD),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.cloud, color: Colors.blue, size: 24),
+          ),
+          SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class WeatherService {
-  final String apiKey = '8f55f11d2f02d7c3620e7d4f8860ea70';
+  final String apiKey = '3425e18a2e2aa355b35af5bd268e3dfe';
 
   Future<Map<String, dynamic>> fetchWeather(String location) async {
     final response = await http.get(
