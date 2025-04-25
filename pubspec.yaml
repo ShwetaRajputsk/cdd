@@ -75,8 +75,18 @@ flutter:
     - assets/images/logoimage.jpg
     - assets/images/google.png
     - assets/images/logoo.png
-dev_dependencies:
-  flutter_launcher_icons: ^0.14.0
+    - assets/images/assistant_icon.png
+    - assets/herbicides/glycel.png
+    - assets/herbicides/rally.png
+    - assets/herbicides/basagran.png
+    - assets/herbicides/almix.png
+    - assets/herbicides/nominee.png
+    - assets/herbicides/clodinafop.png
+    - assets/herbicides/topstar.png
+    - assets/herbicides/pendimethalin.png
+
+    
+flutter_launcher_icons: ^0.14.0
  
 flutter_icons:
   android: true
