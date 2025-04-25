@@ -29,16 +29,16 @@ class _AccountPageState extends State<AccountPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
         if (doc.exists) {
-          Map<String, dynamic>? data = doc.data();
-          if (data != null) {
-            setState(() {
-              _imageUrl = data['imageUrl'] ?? '';
-              _name = data['name'] ?? 'No Name';
-              _email = data['email'] ?? 'No Email';
-            });
-          }
+          setState(() {
+            _imageUrl = doc['imageUrl'];
+            _name = doc['name'] ?? 'No Name';
+            _email = doc['email'] ?? 'No Email';
+          });
         }
       } catch (e) {
         print("Error loading user profile: $e");
@@ -50,137 +50,236 @@ class _AccountPageState extends State<AccountPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.asset('assets/Logo.png'),
-        ),
-        title: Text(
-          'account'.tr(),
+        backgroundColor: const Color(0xFF1C4B0C),
+        elevation: 0,
+        title: const Text(
+          'Profile',
           style: TextStyle(
             fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 0.5,
           ),
         ),
         centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: Colors.black),
+        iconTheme: const IconThemeData(color: Colors.white), // Back arrow icon in white
       ),
+      backgroundColor: const Color(0xFFF5F5F5),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-                );
-              },
-              child: Row(
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
                 children: [
-                  _imageUrl != null
-                      ? CircleAvatar(
-                          radius: 30,
-                          backgroundImage: NetworkImage(_imageUrl!),
-                        )
-                      : CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.grey,
-                          child: Icon(Icons.person, size: 30),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const EditProfileScreen()),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: const Color(0xFF1C4B0C).withOpacity(0.8),
+                                width: 2),
+                          ),
+                          child: _imageUrl != null
+                              ? CircleAvatar(
+                                  radius: 35,
+                                  backgroundImage: NetworkImage(_imageUrl!),
+                                )
+                              : CircleAvatar(
+                                  radius: 35,
+                                  backgroundColor: Colors.grey[200],
+                                  child: Icon(Icons.person_outline,
+                                      size: 35,
+                                      color: const Color(0xFF1C4B0C)
+                                          .withOpacity(0.8)),
+                                ),
                         ),
-                  SizedBox(width: 16),
-                  Expanded(
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _name ?? 'Shweta Rajput',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1C4B0C),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _email ?? 'shwetarajputskk@gmail.com',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black54,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.edit_outlined,
+                            color: const Color(0xFF1C4B0C).withOpacity(0.8),
+                            size: 20),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Premium Features',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1C4B0C),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF1C4B0C),
+                          Color(0xFF2E7D32),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _name ?? 'Shweta Rajput',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          'upgradePlan'.tr(),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 8),
                         Text(
-                          _email ?? 'shwetarajputskk@gmail.com',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          'upgradeBenefits'.tr(),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 12),
+                          ),
+                          child: Text(
+                            'Upgrade Now',
+                            style: TextStyle(
+                              color: const Color(0xFF1C4B0C),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Icon(Icons.arrow_forward_ios, size: 16),
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
+                  const SizedBox(height: 24),
                   Text(
-                    'upgradePlan'.tr(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    'Settings',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1C4B0C),
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'upgradeBenefits'.tr(),
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 16),
-             ElevatedButton(
-  onPressed: () {},
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.green,
-    foregroundColor: Colors.white,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(8),
-    ),
-    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-  ),
-  child: Text('upgradePlan'.tr()),
-),
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
-            _buildSettingItem(Icons.notifications, 'notifications'.tr()),
-            _buildSettingItem(Icons.security, 'accountSecurity'.tr()),
-            _buildSettingItem(Icons.credit_card, 'billing'.tr()),
-            _buildSettingItem(Icons.language, 'languageRegion'.tr(), onTap: () {
-              _showLanguageDialog(context);
-            }),
-            _buildSettingItem(Icons.palette, 'appAppearance'.tr()),
-            _buildSettingItem(Icons.help_outline, 'helpSupport'.tr()),
-            SizedBox(height: 1),
-            InkWell(
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 16),
-                    Text(
-                      'logout'.tr(),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red.shade700,
+                  const SizedBox(height: 16),
+                  _buildSettingItem(
+                      Icons.notifications_none_outlined, 'Notifications'),
+                  _buildSettingItem(Icons.security_outlined, 'Security'),
+                  _buildSettingItem(Icons.credit_card_outlined, 'Billing'),
+                  _buildSettingItem(Icons.language_outlined, 'Language',
+                      onTap: () {
+                    _showLanguageDialog(context);
+                  }),
+                  _buildSettingItem(Icons.palette_outlined, 'Appearance'),
+                  _buildSettingItem(Icons.help_outline, 'Help & Support'),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => LoginScreen()),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.logout, color: Colors.red),
+                          const SizedBox(width: 16),
+                          Text(
+                            'logout'.tr(),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -199,36 +298,6 @@ class _AccountPageState extends State<AccountPage> {
     });
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('languageRegion'.tr()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text('English'),
-                onTap: () {
-                  context.setLocale(Locale('en'));
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: Text('हिंदी'),
-                onTap: () {
-                  context.setLocale(Locale('hi'));
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildSettingItem(IconData icon, String title, {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
@@ -236,18 +305,56 @@ class _AccountPageState extends State<AccountPage> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 24),
-            SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Icon(icon,
+                color: const Color(0xFF1C4B0C).withOpacity(0.8), size: 24),
+            const SizedBox(width: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 16),
+            const Spacer(),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.grey[400],
+              size: 16,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showLanguageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('languageRegion'.tr()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text('English'),
+                onTap: () {
+                  context.setLocale(const Locale('en'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: const Text('हिंदी'),
+                onTap: () {
+                  context.setLocale(const Locale('hi'));
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
