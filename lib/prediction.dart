@@ -3,6 +3,7 @@ import 'dart:typed_data'; // Import Uint8List
 import 'chat.dart'; // Import the chat.dart file
 
 class PlantHealthScreen extends StatelessWidget {
+  final Color primaryColor = const Color(0xFF1C4B0C);
   final Uint8List imageData;
   final String diseaseName;
   final String symptoms;
@@ -17,27 +18,52 @@ class PlantHealthScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        backgroundColor: primaryColor,
+        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white), // Back button icon
-          onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
-          },
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Crop Health Report'), // Title of the AppBar
-        backgroundColor: Colors.green, // AppBar background color
+        title: const Text(
+          'Crop Health Report',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Plant Image
-            SizedBox(
+            Container(
               width: double.infinity,
               height: 320,
-              child: Image.memory(
-                imageData,
-                fit: BoxFit.cover,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(24),
+                ),
+                child: Image.memory(
+                  imageData,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             
@@ -50,9 +76,10 @@ class PlantHealthScreen extends StatelessWidget {
                   Text(
                     diseaseName,
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.teal.shade900,
+                      color: primaryColor,
+                      height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -74,8 +101,17 @@ class PlantHealthScreen extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryColor.withOpacity(0.2)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,20 +119,21 @@ class PlantHealthScreen extends StatelessWidget {
                     // Plant Health Header
                     Row(
                       children: [
-                        const PlantIcon(),
-                        const SizedBox(width: 8),
-                        const Text(
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.local_florist_rounded, color: primaryColor),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
                           'Plant Health',
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: primaryColor,
                           ),
                         ),
                       ],
@@ -107,7 +144,7 @@ class PlantHealthScreen extends StatelessWidget {
                     // Health Status
                     const Text(
                       ' YOUR CROP HEALTH STATUS IS READY!',
-                      style: TextStyle(
+                        style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -138,13 +175,14 @@ class PlantHealthScreen extends StatelessWidget {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        minimumSize: const Size(double.infinity, 56),
+                        elevation: 0,
+                        minimumSize: const Size(double.infinity, 54),
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -171,11 +209,12 @@ class PlantHealthScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Symptoms',
                     style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: primaryColor,
                     ),
                   ),
                   const SizedBox(height: 16),
