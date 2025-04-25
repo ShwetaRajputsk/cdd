@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'bottom_navigation_bar.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({Key? key}) : super(key: key);
@@ -23,12 +24,21 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _scrollController = ScrollController();
   final String _apiKey = "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";
   final String _apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+  int _currentIndex = 1;
+  final Color primaryColor = const Color(0xFF1C4B0C);
+
   List<String> _prefilledQuestions = [
     'bestCropsSummer'.tr(),
     'protectCropsDiseases'.tr(),
     'idealIrrigationSystem'.tr(),
     'sustainableFarmingPractices'.tr(),
   ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   void initState() {
@@ -72,12 +82,9 @@ class _ChatPageState extends State<ChatPage> {
               });
             }
           }
-          // Sort messages by timestamp
           _messages.sort((a, b) => (a['timestamp'] as DateTime).compareTo(b['timestamp'] as DateTime));
         });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _scrollToBottom();
-        });
+        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       }
     } catch (e) {
       debugPrint("Error loading chat history: $e");
@@ -101,12 +108,7 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       await batch.commit();
-      
-      if (mounted) {
-        setState(() {
-          _messages.clear();
-        });
-      }
+      if (mounted) setState(() => _messages.clear());
     } catch (e) {
       debugPrint("Error clearing chat history: $e");
       if (mounted) {
@@ -121,8 +123,7 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _sendMessage() async {
-    final userInput = _controller.text.trim();
+  Future<void> _sendMessage(String userInput) async {
     if (userInput.isEmpty || _isLoading) return;
 
     final userMessage = {
@@ -138,17 +139,18 @@ class _ChatPageState extends State<ChatPage> {
     });
     _scrollToBottom();
 
-    // Save user message to Firestore first
-    final docRef = await FirebaseFirestore.instance
-        .collection('chat_history')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .collection('messages')
-        .add({
-      'user_query': userInput,
-      'bot_response': '',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    DocumentReference? docRef;
     try {
+      docRef = await FirebaseFirestore.instance
+          .collection('chat_history')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .collection('messages')
+          .add({
+        'user_query': userInput,
+        'bot_response': '',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
       final response = await http.post(
         Uri.parse(_apiUrl),
         headers: {
@@ -158,14 +160,11 @@ class _ChatPageState extends State<ChatPage> {
         body: jsonEncode({
           "model": "llama3-70b-8192",
           "messages": [
-           {
-      "role": "system",
-      "content": "You are a agricultural assistant. You can ask questions or choose from the suggestions below.",
-    },
-            ..._messages.map((msg) => {
-              "role": msg["role"],
-              "content": msg["content"]
-            }).toList()
+            {
+              "role": "system",
+              "content": "You are an agricultural assistant. Provide detailed, professional answers.",
+            },
+            ..._messages.map((msg) => {"role": msg["role"], "content": msg["content"]})
           ],
           "temperature": 0.7,
           "max_tokens": 1024,
@@ -180,25 +179,18 @@ class _ChatPageState extends State<ChatPage> {
         
         if (botResponse.isEmpty) throw Exception("Empty response");
 
-        final botMessage = {
+        setState(() => _messages.add({
           'role': 'assistant',
           'content': botResponse,
           'timestamp': DateTime.now(),
-        };
+        }));
 
-        setState(() {
-          _messages.add(botMessage);
-        });
-
-        // Update Firestore with bot response
         await docRef.update({
           'bot_response': botResponse,
           'timestamp': FieldValue.serverTimestamp(),
         });
-        
-        _scrollToBottom();
       } else {
-        throw HttpException("API Error", statusCode: response.statusCode);
+        throw HttpException("API Error", response.statusCode);
       }
     } on TimeoutException {
       _showErrorMessage("timeoutError".tr());
@@ -210,9 +202,8 @@ class _ChatPageState extends State<ChatPage> {
       _showErrorMessage("errorProcessingRequest".tr());
       debugPrint("Error: $e");
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
+      _scrollToBottom();
     }
   }
 
@@ -248,136 +239,162 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('digitalAssistant'.tr()),
+        backgroundColor: primaryColor,
+        elevation: 0,
+        title: const Text(
+          'AI Assistant',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete),
-            onPressed: _clearChatHistory,
-            tooltip: 'clearChat'.tr(),
+            icon: const Icon(Icons.help_outline, color: Colors.white),
+            onPressed: () {},
           ),
         ],
       ),
       body: Column(
         children: [
-          // Welcome Message
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue[100]!),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.agriculture, color: Colors.blue),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'welcomeMessage'.tr(),
-                    style: TextStyle(
-                      color: Colors.blue[800],
-                      fontSize: 14,
+          // Assistant Card
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Container(
+              padding: EdgeInsets.all(18),
+              height: 100,
+              decoration: BoxDecoration(
+                color: Color(0xFF1C4B0C),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'I\'m your CropFit Assistant',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'Here to help you with all your agricultural needs. '
+                          'Ask me about crop care, disease solutions, or farming best practices.',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                Align(
+          alignment: Alignment.bottomRight,
+          child: Image.asset(
+            'assets/images/assistant_icon.png',
+            height: 180,
+            fit: BoxFit.contain,
+          ),
+        ),
+                ],
+              ),
             ),
           ),
 
-          // Suggested Questions
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'askOrChoose'.tr(),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
+          // Existing content below
+          if (_messages.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'suggestedQuestions'.tr(),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: primaryColor,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _prefilledQuestions.map((question) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ActionChip(
-                          label: Text(question),
-                          onPressed: () {
-                            _controller.text = question;
-                            _sendMessage();
-                          },
-                          backgroundColor: Colors.green[50],
-                          labelStyle: TextStyle(color: Colors.green[800]),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _prefilledQuestions.map((question) => InkWell(
+                      onTap: () => _sendMessage(question),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: primaryColor.withOpacity(0.2)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 1,
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
-                      );
-                    }).toList(),
+                        child: Text(
+                          question,
+                          style: TextStyle(color: primaryColor, fontSize: 14),
+                        ),
+                      ),
+                    )).toList(),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-
-          // Chat Messages
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final isUser = msg["role"] == "user";
-
-                return GestureDetector(
-                  onLongPress: () => _copyToClipboard(msg["content"]!),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: Align(
-                      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.85,
-                        ),
-                        child: Card(
-                          elevation: 1,
-                          color: isUser ? Colors.blue[50] : Colors.green[50],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isUser ? 'You' : 'Assistant',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isUser ? Colors.blue[800] : Colors.green[800],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                               MarkdownBody(
-  data: msg["content"]!,
-  styleSheet: MarkdownStyleSheet(
-    p: TextStyle(
-      color: isUser ? Colors.blue[900] : Colors.green[900],
-      fontSize: 14, // Match your existing text size
-    ),
-    strong: TextStyle(
-      color: isUser ? Colors.blue[900] : Colors.green[900],
-      fontWeight: FontWeight.bold,
-    ),
-  ),
-),
-                              ],
-                            ),
-                          ),
+                final message = _messages[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Align(
+                    alignment: message['role'] == 'user' 
+                        ? Alignment.centerRight 
+                        : Alignment.centerLeft,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.75),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: message['role'] == 'user' 
+                            ? primaryColor 
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: const Offset(0, 1)),
+                        ],
+                      ),
+                      child: MarkdownBody(
+                        data: message['content'],
+                        styleSheet: MarkdownStyleSheet(
+                          p: TextStyle(
+                            color: message['role'] == 'user' 
+                                ? Colors.white 
+                                : Colors.black87,
+                            fontSize: 15),
                         ),
                       ),
                     ),
@@ -386,43 +403,66 @@ class _ChatPageState extends State<ChatPage> {
               },
             ),
           ),
-
-          // Loading Indicator
           if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor)),
+              ),
             ),
-
-          // Input Area
-          Padding(
+          Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 4,
+                  offset: const Offset(0, -1)),
+              ],
+            ),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: InputDecoration(
-                      hintText: 'askQuestionHint'.tr(),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade200)),
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        hintText: 'typeMessage'.tr(),
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: _sendMessage,
-                      ),
+                      onSubmitted: (value) => _sendMessage(value),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
-                    maxLines: 3,
-                    minLines: 1,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    shape: BoxShape.circle),
+                  child: IconButton(
+                    icon: const Icon(Icons.send_rounded, color: Colors.white),
+                    onPressed: () => _sendMessage(_controller.text),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: CustomBottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onItemTapped,
       ),
     );
   }
@@ -432,7 +472,7 @@ class HttpException implements Exception {
   final String message;
   final int statusCode;
 
-  HttpException(this.message, {required this.statusCode});
+  HttpException(this.message, this.statusCode);
 
   @override
   String toString() => message;
