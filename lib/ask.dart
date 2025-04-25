@@ -6,7 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:easy_localization/easy_localization.dart'; // For .tr()
+import 'package:easy_localization/easy_localization.dart';
 
 class AskCommunityScreen extends StatefulWidget {
   const AskCommunityScreen({Key? key}) : super(key: key);
@@ -16,11 +16,12 @@ class AskCommunityScreen extends StatefulWidget {
 }
 
 class _AskCommunityScreenState extends State<AskCommunityScreen> {
+  final Color primaryColor = const Color(0xFF1C4B0C);
   final TextEditingController _questionController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  File? _selectedImageFile; // For mobile
-  Uint8List? _selectedImageBytes; // For web
-  String? _selectedImageName; // For web (file name)
+  File? _selectedImageFile;
+  Uint8List? _selectedImageBytes;
+  String? _selectedImageName;
 
   @override
   void dispose() {
@@ -30,26 +31,26 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
   }
 
   Future<void> _pickImage() async {
-    if (kIsWeb) {
-      // Web file picker
+    try {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
+      if (image == null) return;
+
+      if (kIsWeb) {
         final bytes = await image.readAsBytes();
         setState(() {
           _selectedImageBytes = bytes;
           _selectedImageName = image.name;
         });
-      }
-    } else {
-      // Mobile file picker
-      final picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
+      } else {
         setState(() {
           _selectedImageFile = File(image.path);
         });
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('community.image_upload_error'.tr())),
+      );
     }
   }
 
@@ -57,87 +58,59 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     final question = _questionController.text.trim();
     final description = _descriptionController.text.trim();
 
-    // Validate fields
     if (question.isEmpty || description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("ask_community.validation_empty".tr())),
+        SnackBar(content: Text("community.validation_empty".tr())),
       );
       return;
     }
 
-    final postRef = FirebaseFirestore.instance.collection('community_posts').doc();
-
-    // Get the current user's data
-    final user = FirebaseAuth.instance.currentUser;
-
-    // Fetch the user's name from Firestore
-    String userName = '';
-    if (user != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (userDoc.exists) {
-        userName = userDoc.data()?['name'] ?? '';
-      }
-    }
-
-    // If name is not set, fallback to 'Anonymous'
-    userName = userName.isEmpty ? 'ask_community.anonymous'.tr() : userName;
-
-    final userId = user?.uid ?? ''; // Use user ID
-
-    // Fetch the user's profile image from Firestore
-    String userProfileImage = '';
-    if (user != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (userDoc.exists) {
-        userProfileImage = userDoc.data()?['imageUrl'] ?? ''; // Fetch imageUrl from Firestore
-      }
-    }
-
-    Map<String, dynamic> postData = {
-      'question': question,
-      'description': description,
-      'timestamp': FieldValue.serverTimestamp(),
-      'userName': userName, // Use the fetched userName
-      'userId': userId, // Add user's ID
-      'userProfileImage': userProfileImage, // Add user's profile image URL
-    };
-
-    // Upload image if selected
-    if (_selectedImageFile != null || _selectedImageBytes != null) {
-      try {
-        final storageRef = FirebaseStorage.instance.ref();
-        final imageRef = storageRef.child('community_images/${postRef.id}.jpg');
-
-        if (kIsWeb && _selectedImageBytes != null) {
-          // Upload image as bytes (web)
-          await imageRef.putData(_selectedImageBytes!);
-        } else if (_selectedImageFile != null) {
-          // Upload image file (mobile)
-          await imageRef.putFile(_selectedImageFile!);
-        }
-
-        final imageUrl = await imageRef.getDownloadURL();
-        postData['imageUrl'] = imageUrl;
-        print("Image URL: $imageUrl");
-      } catch (e) {
-        print("Error uploading image: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("ask_community.image_upload_error".tr())),
-        );
-        return;
-      }
-    }
-
     try {
-      await postRef.set(postData);
+      final postRef = FirebaseFirestore.instance.collection('community_posts').doc();
+      final user = FirebaseAuth.instance.currentUser;
+
+      // Get user details
+      String userName = 'community.anonymous'.tr();
+      String userProfileImage = '';
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final data = userDoc.data()!;
+          userName = data['name'] ?? userName;
+          userProfileImage = data['imageUrl'] ?? '';
+        }
+      }
+
+      // Upload image
+      String? imageUrl;
+      if (_selectedImageFile != null || _selectedImageBytes != null) {
+        final storageRef = FirebaseStorage.instance.ref().child('community_images/${postRef.id}.jpg');
+        if (kIsWeb && _selectedImageBytes != null) {
+          await storageRef.putData(_selectedImageBytes!);
+        } else if (_selectedImageFile != null) {
+          await storageRef.putFile(_selectedImageFile!);
+        }
+        imageUrl = await storageRef.getDownloadURL();
+      }
+
+      // Save post
+      await postRef.set({
+        'question': question,
+        'description': description,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userName': userName,
+        'userId': user?.uid ?? '',
+        'userProfileImage': userProfileImage,
+        'imageUrl': imageUrl,
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("ask_community.post_success".tr())),
+        SnackBar(content: Text("community.post_success".tr())),
       );
       Navigator.pop(context);
     } catch (e) {
-      print("Error saving post: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("${"ask_community.post_error".tr()}: $e")),
+        SnackBar(content: Text("community.post_error".tr())),
       );
     }
   }
@@ -147,20 +120,22 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: primaryColor,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'ask_community.title'.tr(),
+          'community.ask_question'.tr(),
           style: const TextStyle(
-            color: Colors.black,
+            color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -168,56 +143,127 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              OutlinedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.image_outlined),
-                label: Text('ask_community.add_image'.tr()),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(width: 2),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-              if (_selectedImageFile != null || _selectedImageBytes != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  child: kIsWeb
-                      ? Image.memory(
-                          _selectedImageBytes!,
-                          height: 150,
-                          fit: BoxFit.cover,
-                        )
-                      : Image.file(
-                          _selectedImageFile!,
-                          height: 150,
-                          fit: BoxFit.cover,
-                        ),
-                ),
-              const SizedBox(height: 16),
               Text(
-                'ask_community.improve_probability'.tr(),
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
+                'community.ask_question'.tr(),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
                 ),
               ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: () {},
-                child: Text('ask_community.add_crop'.tr()),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(width: 2),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                'community.get_help'.tr(),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
                 ),
               ),
               const SizedBox(height: 24),
+
+              // Image Picker
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _pickImage,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              color: primaryColor, size: 28),
+                          const SizedBox(width: 12),
+                          Text(
+                            'community.add_image'.tr(),
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              if (_selectedImageFile != null || _selectedImageBytes != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: kIsWeb
+                          ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                          : Image.file(_selectedImageFile!, fit: BoxFit.cover),
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: primaryColor.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.tips_and_updates_outlined, color: primaryColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          'community.tips'.tr(),
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'community.improve_probability'.tr(),
+                      style: TextStyle(
+                        color: primaryColor.withOpacity(0.8),
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(
+                      onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: primaryColor, width: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      child: Text('community.add_crop'.tr()),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
               Text(
-                'ask_community.your_question'.tr(),
+                'community.your_question'.tr(),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
@@ -243,31 +289,26 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       maxLength: 200,
                       maxLines: 4,
                       decoration: InputDecoration(
-                        hintText: "ask_community.question_hint".tr(),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                        ),
+                        hintText: "community.question_hint".tr(),
+                        border: InputBorder.none,
                         contentPadding: const EdgeInsets.all(16),
                       ),
-                      onChanged: (text) => setState(() {}),
                     ),
                     Positioned(
                       right: 8,
                       bottom: 8,
                       child: Text(
-                        '${_questionController.text.length} / 200 ${"ask_community.characters".tr()}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
+                        '${_questionController.text.length}/200 ${"community.characters".tr()}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ),
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
               Text(
-                'ask_community.description'.tr(),
+                'community.description'.tr(),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
@@ -286,45 +327,35 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                     ),
                   ],
                 ),
-                child: Stack(
-                  children: [
-                    TextField(
-                      controller: _descriptionController,
-                      maxLength: 2500,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'ask_community.description_hint'.tr(),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.all(16),
-                      ),
-                      onChanged: (text) => setState(() {}),
-                    ),
-                    Positioned(
-                      right: 8,
-                      bottom: 8,
-                      child: Text(
-                        '${_descriptionController.text.length} / 2500 ${"ask_community.characters".tr()}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: TextField(
+                  controller: _descriptionController,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    hintText: 'community.description_hint'.tr(),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
+                height: 54,
                 child: ElevatedButton(
                   onPressed: _submitPost,
-                  child: Text('ask_community.send'.tr()),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: primaryColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'community.submit'.tr(),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                      color: Colors.white,
                     ),
                   ),
                 ),
