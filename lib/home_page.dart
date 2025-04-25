@@ -253,62 +253,66 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 24),
 
               // Did You Know Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  padding: EdgeInsets.all(20),
-                  height: 191, // Adjusted height to prevent overflow
-                  decoration: BoxDecoration(
-                    color: Color(0xFF1C4B0C),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'home.didYouKnow'.tr(), // Localized text
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'home.didYouKnowText'.tr(), // Localized text
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 11,
-                              ),
-                            ),
-                            SizedBox(height: 13),
-                            ElevatedButton(
-                              onPressed: () {},
-                              child: Text('home.seeMore'.tr()), // Localized text
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Color(0xFF1C4B0C),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Image.asset(
-                        'assets/images/logoimage.jpg',
-                        height: 140, // Reduced image height to fit container
-                        fit: BoxFit.contain,
-                      ),
-                    ],
-                  ),
+     Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+  child: Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: const Color(0xFF1C4B0C),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start, // to align with image top
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // let content define height
+            children: [
+              Text(
+                'home.didYouKnow'.tr(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 8),
+              Text(
+                'home.didYouKnowText'.tr(),
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 10,
+                ),
+              ),
+              const SizedBox(height: 13),
+              ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1C4B0C),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text('home.seeMore'.tr()),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Image.asset(
+            'assets/images/logoimage.jpg',
+            height: 120, // slightly smaller to avoid overflow
+            fit: BoxFit.contain,
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+const SizedBox(height: 24),
 
               // Help Your Crop Section
               Padding(
