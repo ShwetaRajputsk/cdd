@@ -5,7 +5,6 @@ import 'home_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
-import 'custom_app_bar.dart';
 import 'bottom_navigation_bar.dart';
 import 'prediction.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -19,49 +18,72 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   Uint8List? _imageData;
   bool _isLoading = false;
   int _currentIndex = 2;
+  final Color primaryColor = const Color(0xFF1C4B0C);
 
   Future<void> _pickImage() async {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('chooseOption'.tr()),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'chooseOption'.tr(),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library, color: primaryColor),
+                title: Text('uploadFromGallery'.tr()),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onTap: () async {
+                  final picker = ImagePicker();
+                  final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                  
+                  if (pickedFile != null) {
+                    _imageData = await pickedFile.readAsBytes();
+                    Navigator.of(context).pop();
+                    await _sendImage(_imageData!);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Icon(Icons.camera_alt, color: primaryColor),
+                title: Text('takePicture'.tr()),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final imageBytes = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => CameraScreen()),
+                  );
+
+                  if (imageBytes != null) {
+                    setState(() => _imageData = imageBytes);
+                    await _sendImage(_imageData!);
+                  }
+                },
+              ),
+            ],
+          ),
           actions: [
             TextButton(
-              onPressed: () async {
-                final picker = ImagePicker();
-                final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                
-                if (pickedFile != null) {
-                  _imageData = await pickedFile.readAsBytes();
-                  Navigator.of(context).pop();
-                  await _sendImage(_imageData!);
-                }
-              },
-              child: Text('uploadFromGallery'.tr()),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                final imageBytes = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CameraScreen()),
-                );
-
-                if (imageBytes != null) {
-                  setState(() {
-                    _imageData = imageBytes;
-                  });
-                  await _sendImage(_imageData!);
-                }
-              },
-              child: Text('takePicture'.tr()),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('cancel'.tr()),
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'cancel'.tr(),
+                style: TextStyle(color: primaryColor),
+              ),
             ),
           ],
         );
@@ -70,9 +92,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   }
 
   Future<void> _sendImage(Uint8List imageData) async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final request = http.MultipartRequest('POST', Uri.parse('https://cddnew-2.onrender.com/predict'));
@@ -83,30 +103,22 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
       final result = String.fromCharCodes(responseData);
       final jsonResponse = jsonDecode(result);
 
-      String prediction = jsonResponse['prediction'];
-      String symptoms = (jsonResponse['symptoms'] as List).join('\n');
-
-      setState(() {
-        _isLoading = false;
-      });
-
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => PlantHealthScreen(
             imageData: _imageData!,
-            diseaseName: prediction,
-            symptoms: symptoms,
+            diseaseName: jsonResponse['prediction'],
+            symptoms: (jsonResponse['symptoms'] as List).join('\n'),
           ),
         ),
       );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('errorOccurred'.tr())),
       );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -114,10 +126,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
     setState(() {
       _currentIndex = index;
       if (_currentIndex == 0) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => HomePage()));
       }
     });
   }
@@ -125,80 +134,154 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CustomAppBar(title: 'CropFit'),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        backgroundColor: primaryColor,
+        elevation: 0,
+        title: const Text(
+          'CropFit',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset('assets/graphic_image.png', height: 200, width: 200),
-            SizedBox(height: 20),
-            Text(
-              'healthCheck'.tr(),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF222222),
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'healthCheckDescription'.tr(),
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Color(0xFF222222)),
-            ),
-            SizedBox(height: 30),
-            ElevatedButton.icon(
-              onPressed: _pickImage,
-              icon: Icon(Icons.upload),
-              label: Text('uploadImageDetect'.tr()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF3AAA49),
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                textStyle: TextStyle(fontSize: 18),
-              ),
-            ),
-            SizedBox(height: 20),
-            _imageData == null
-                ? Text('noImageSelected'.tr(), style: TextStyle(color: Color(0xFF222222)))
-                : Column(
-                    children: [
-                      SizedBox(height: 20),
-                      if (_isLoading)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildLoadingCircle(Colors.green),
-                            SizedBox(width: 10),
-                            _buildLoadingCircle(Colors.green),
-                            SizedBox(width: 10),
-                            _buildLoadingCircle(Colors.green),
-                          ],
-                        ),
-                    ],
+            const SizedBox(height: 24), // Added space after AppBar
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
                   ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(24),
+                    ),
+                    child: Image.asset(
+                      'assets/graphic_image.png',
+                      height: 240,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        Text(
+                          'healthCheck'.tr(),
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'healthCheckDescription'.tr(),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[700],
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton.icon(
+                            onPressed: _pickImage,
+                            icon: const Icon(Icons.camera_alt, color: Colors.white), // Camera icon in white
+                            label: Text(
+                              'uploadImageDetect'.tr(),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_imageData != null) ...[
+                          const SizedBox(height: 24),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                              color: Colors.grey[50],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(
+                                _imageData!,
+                                height: 200,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (_isLoading) ...[
+                          const SizedBox(height: 24),
+                          Column(
+                            children: [
+                              CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'analyzing'.tr(),
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _pickImage,
-        child: Icon(Icons.camera_alt),
-        backgroundColor: Color(0xFF088A6A),
+        child: const Icon(Icons.camera_alt_rounded, color: Colors.white), // Camera icon in white
+        backgroundColor: primaryColor,
       ),
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onItemTapped,
-      ),
-    );
-  }
-
-  Widget _buildLoadingCircle(Color color) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
       ),
     );
   }
