@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart'; // Import for kIsWeb
-import 'package:firebase_auth/firebase_auth.dart'; // Import for FirebaseAuth
-import 'package:easy_localization/easy_localization.dart'; // Import for FirebaseAuth
-import 'ask.dart'; // Import AskCommunityScreen
-import 'reply.dart'; // Import ReplyPage
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'ask.dart';
+import 'reply.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'notification_page.dart';
@@ -31,7 +31,10 @@ class _CommunityPageState extends State<CommunityPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
         if (doc.exists) {
           final data = doc.data();
           setState(() {
@@ -68,9 +71,10 @@ class _CommunityPageState extends State<CommunityPage> {
         title: Row(
           children: [
             CircleAvatar(
-              backgroundImage: _userImageUrl != null && _userImageUrl!.isNotEmpty
-                  ? NetworkImage(_userImageUrl!) as ImageProvider
-                  : AssetImage('assets/profile.png'),
+              backgroundImage:
+                  _userImageUrl != null && _userImageUrl!.isNotEmpty
+                      ? NetworkImage(_userImageUrl!) as ImageProvider
+                      : AssetImage('assets/profile.png'),
               radius: 20,
             ),
             SizedBox(width: 12),
@@ -78,7 +82,7 @@ class _CommunityPageState extends State<CommunityPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-               'Hi, ${_userName ?? 'User'}!',
+                  'Hi, ${_userName ?? 'User'}!',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -98,7 +102,8 @@ class _CommunityPageState extends State<CommunityPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_none_outlined, color: Colors.grey[800]),
+            icon: Icon(Icons.notifications_none_outlined,
+                color: Colors.grey[800]),
             onPressed: () {
               Navigator.push(
                 context,
@@ -150,7 +155,8 @@ class _CommunityPageState extends State<CommunityPage> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => AskCommunityScreen()),
+                              MaterialPageRoute(
+                                  builder: (context) => AskCommunityScreen()),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -190,7 +196,8 @@ class _CommunityPageState extends State<CommunityPage> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1C4B0C)),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Color(0xFF1C4B0C)),
                     ),
                   );
                 }
@@ -200,7 +207,8 @@ class _CommunityPageState extends State<CommunityPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.forum_outlined, size: 64, color: Colors.grey),
+                        Icon(Icons.forum_outlined,
+                            size: 64, color: Colors.grey),
                         SizedBox(height: 16),
                         Text(
                           tr('community.no_posts'),
@@ -227,7 +235,8 @@ class _CommunityPageState extends State<CommunityPage> {
                 return ListView.builder(
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: posts.length,
-                  itemBuilder: (context, index) => _buildPostCard(posts[index], context),
+                  itemBuilder: (context, index) =>
+                      _buildPostCard(posts[index], context),
                 );
               },
             ),
@@ -342,24 +351,28 @@ class _CommunityPageState extends State<CommunityPage> {
             onSelected: (value) async {
               final postData = post.data() as Map<String, dynamic>;
               final postId = post.id;
-              final postUrl = 'https://yourapp.com/community/$postId'; // Replace with your app's URL
-              final shareText = 'Check out this post: ${postData['question']}\n$postUrl';
+              final postUrl = 'https://yourapp.com/community/$postId';
+              final shareText =
+                  'Check out this post: ${postData['question']}\n$postUrl';
 
               switch (value) {
                 case 'facebook':
-                  final facebookUrl = 'https://www.facebook.com/sharer/sharer.php?u=$postUrl';
+                  final facebookUrl =
+                      'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(postUrl)}';
                   if (await canLaunch(facebookUrl)) {
                     await launch(facebookUrl);
                   }
                   break;
                 case 'twitter':
-                  final twitterUrl = 'https://twitter.com/intent/tweet?text=$shareText';
+                  final twitterUrl =
+                      'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(shareText)}';
                   if (await canLaunch(twitterUrl)) {
                     await launch(twitterUrl);
                   }
                   break;
                 case 'whatsapp':
-                  final whatsappUrl = 'https://wa.me/?text=$shareText';
+                  final whatsappUrl =
+                      'https://wa.me/?text=${Uri.encodeComponent(shareText)}';
                   if (await canLaunch(whatsappUrl)) {
                     await launch(whatsappUrl);
                   }
@@ -418,6 +431,8 @@ class _CommunityPageState extends State<CommunityPage> {
   }
 
   Widget _buildPostContent(DocumentSnapshot post) {
+    final imageUrl = post['imageUrl'];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -433,23 +448,22 @@ class _CommunityPageState extends State<CommunityPage> {
             style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 12),
-          if (post.data() != null &&
-              (post.data() as Map<String, dynamic>).containsKey('imageUrl') &&
-              post['imageUrl'] != null &&
-              post['imageUrl'].isNotEmpty)
-            kIsWeb
-                ? Image.network(
-                    post['imageUrl'],
-                    fit: BoxFit.cover,
-                    height: 200,
-                    width: double.infinity,
-                  )
-                : Image.network(
-                    post['imageUrl'],
-                    fit: BoxFit.cover,
-                    height: 200,
-                    width: double.infinity,
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              height: 200,
+              width: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: 200,
+                  color: Colors.grey[200],
+                  child: Center(
+                    child: Icon(Icons.broken_image, color: Colors.grey),
                   ),
+                );
+              },
+            ),
           const SizedBox(height: 12),
         ],
       ),
@@ -566,7 +580,6 @@ class _CommunityPageState extends State<CommunityPage> {
                       TextButton.icon(
                         onPressed: () async {
                           if (currentUserId.isEmpty) {
-                            // Handle case where user is not logged in
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content: Text(
@@ -582,18 +595,14 @@ class _CommunityPageState extends State<CommunityPage> {
                               .doc(currentUserId);
 
                           if (voteType == 'like') {
-                            // If already liked, remove the like
                             await voteRef.delete();
                           } else {
-                            // If disliked, remove the dislike
                             if (voteType == 'dislike') {
                               await voteRef.delete();
                             }
-                            // Add like
                             await voteRef.set({'type': 'like'});
                           }
 
-                          // Send notification to the post owner
                           final postOwnerId = post['userId'];
                           if (postOwnerId != currentUserId) {
                             await FirebaseFirestore.instance
@@ -609,7 +618,7 @@ class _CommunityPageState extends State<CommunityPage> {
                             });
                           }
 
-                          setState(() {}); // Update the UI
+                          setState(() {});
                         },
                         icon: Icon(
                           Icons.thumb_up_outlined,
@@ -633,7 +642,6 @@ class _CommunityPageState extends State<CommunityPage> {
                       TextButton.icon(
                         onPressed: () async {
                           if (currentUserId.isEmpty) {
-                            // Handle case where user is not logged in
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content: Text(
@@ -649,18 +657,14 @@ class _CommunityPageState extends State<CommunityPage> {
                               .doc(currentUserId);
 
                           if (voteType == 'dislike') {
-                            // If already disliked, remove the dislike
                             await voteRef.delete();
                           } else {
-                            // If liked, remove the like
                             if (voteType == 'like') {
                               await voteRef.delete();
                             }
-                            // Add dislike
                             await voteRef.set({'type': 'dislike'});
                           }
 
-                          // Send notification to the post owner
                           final postOwnerId = post['userId'];
                           if (postOwnerId != currentUserId) {
                             await FirebaseFirestore.instance
@@ -676,7 +680,7 @@ class _CommunityPageState extends State<CommunityPage> {
                             });
                           }
 
-                          setState(() {}); // Update the UI
+                          setState(() {});
                         },
                         icon: Icon(
                           Icons.thumb_down_outlined,
@@ -699,12 +703,14 @@ class _CommunityPageState extends State<CommunityPage> {
                   ),
                   FutureBuilder<QuerySnapshot>(
                     future: FirebaseFirestore.instance
-                        .collection('posts')
+                        .collection('community_posts')
                         .doc(post.id)
-                        .collection('replies') // Fetch the answers count
+                        .collection('replies')
                         .get(),
                     builder: (context, answersSnapshot) {
-                      int answersCount = answersSnapshot.hasData ? answersSnapshot.data!.docs.length : 0;
+                      int answersCount = answersSnapshot.hasData
+                          ? answersSnapshot.data!.docs.length
+                          : 0;
                       return Text(
                         '$answersCount answers',
                         style: TextStyle(color: Colors.grey),
