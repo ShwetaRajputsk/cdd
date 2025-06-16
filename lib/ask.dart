@@ -54,6 +54,56 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     }
   }
 
+  Future<String?> _uploadImage() async {
+    try {
+      if (_selectedImageFile == null && _selectedImageBytes == null)
+        return null;
+
+      // Generate a unique filename with timestamp
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'image_$timestamp.jpg';
+
+      // Create a reference with the correct path format
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('community_images')
+          .child(fileName);
+
+      // Set explicit content type
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+      );
+
+      // Upload based on platform
+      if (kIsWeb && _selectedImageBytes != null) {
+        await storageRef.putData(
+          _selectedImageBytes!,
+          metadata,
+        );
+      } else if (_selectedImageFile != null) {
+        await storageRef.putFile(
+          _selectedImageFile!,
+          metadata,
+        );
+      }
+
+      // Return the download URL
+      return await storageRef.getDownloadURL();
+    } on FirebaseException catch (e) {
+      print('Firebase Storage Error: ${e.code} - ${e.message}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Firebase Error: ${e.code}')),
+      );
+      return null;
+    } catch (e) {
+      print('Image upload error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('community.image_upload_error'.tr())),
+      );
+      return null;
+    }
+  }
+
   Future<void> _submitPost() async {
     final question = _questionController.text.trim();
     final description = _descriptionController.text.trim();
@@ -66,14 +116,16 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
     }
 
     try {
-      final postRef = FirebaseFirestore.instance.collection('community_posts').doc();
       final user = FirebaseAuth.instance.currentUser;
 
       // Get user details
       String userName = 'community.anonymous'.tr();
       String userProfileImage = '';
       if (user != null) {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
         if (userDoc.exists) {
           final data = userDoc.data()!;
           userName = data['name'] ?? userName;
@@ -81,19 +133,21 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
         }
       }
 
-      // Upload image
+      // Upload image first
       String? imageUrl;
       if (_selectedImageFile != null || _selectedImageBytes != null) {
-        final storageRef = FirebaseStorage.instance.ref().child('community_images/${postRef.id}.jpg');
-        if (kIsWeb && _selectedImageBytes != null) {
-          await storageRef.putData(_selectedImageBytes!);
-        } else if (_selectedImageFile != null) {
-          await storageRef.putFile(_selectedImageFile!);
+        imageUrl = await _uploadImage();
+        if (imageUrl == null) {
+          // Exit if upload failed
+          return;
         }
-        imageUrl = await storageRef.getDownloadURL();
       }
 
-      // Save post
+      // Create post reference AFTER successful image upload
+      final postRef =
+          FirebaseFirestore.instance.collection('community_posts').doc();
+
+      // Save post with all data
       await postRef.set({
         'question': question,
         'description': description,
@@ -109,6 +163,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
       );
       Navigator.pop(context);
     } catch (e) {
+      print('Post submission error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("community.post_error".tr())),
       );
@@ -208,7 +263,8 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: kIsWeb
-                          ? Image.memory(_selectedImageBytes!, fit: BoxFit.cover)
+                          ? Image.memory(_selectedImageBytes!,
+                              fit: BoxFit.cover)
                           : Image.file(_selectedImageFile!, fit: BoxFit.cover),
                     ),
                   ),
@@ -227,7 +283,8 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.tips_and_updates_outlined, color: primaryColor),
+                        Icon(Icons.tips_and_updates_outlined,
+                            color: primaryColor),
                         const SizedBox(width: 8),
                         Text(
                           'community.tips'.tr(),
@@ -253,7 +310,8 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       onPressed: () {},
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: primaryColor, width: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                       ),
                       child: Text('community.add_crop'.tr()),
                     ),
@@ -299,7 +357,8 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                       bottom: 8,
                       child: Text(
                         '${_questionController.text.length}/200 ${"community.characters".tr()}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style:
+                            const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ),
                   ],
@@ -347,7 +406,7 @@ class _AskCommunityScreenState extends State<AskCommunityScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   child: Text(
                     'community.submit'.tr(),
