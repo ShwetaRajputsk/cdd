@@ -248,20 +248,35 @@ class _CommunityPageState extends State<CommunityPage> {
 
   Widget _buildPostCard(DocumentSnapshot post, BuildContext context) {
     final postData = post.data() as Map<String, dynamic>;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildPostHeader(post),
-          _buildPostContent(post),
-          _buildPostFooter(post),
-        ],
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReplyPage(
+              postId: post.id,
+              imageUrl: postData['imageUrl'],
+              question: postData['question'],
+              description: postData['description'],
+            ),
+          ),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPostHeader(post),
+            _buildPostContent(post),
+            _buildPostFooter(post),
+          ],
+        ),
       ),
     );
   }
@@ -269,6 +284,29 @@ class _CommunityPageState extends State<CommunityPage> {
   Widget _buildPostHeader(DocumentSnapshot post) {
     String userName = post['userName'] ?? 'Anonymous';
     String userProfileImage = post['userProfileImage'] ?? '';
+    final postOwnerId = post['userId'] ?? '';
+    final postId = post.id;
+
+    // Get timestamp and format as "time ago"
+    String timeAgo = '';
+    final timestamp = post['timestamp'];
+    if (timestamp != null) {
+      final date = (timestamp as Timestamp).toDate();
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inSeconds < 60) {
+        timeAgo = '${difference.inSeconds}s ago';
+      } else if (difference.inMinutes < 60) {
+        timeAgo = '${difference.inMinutes}m ago';
+      } else if (difference.inHours < 24) {
+        timeAgo = '${difference.inHours}h ago';
+      } else if (difference.inDays < 7) {
+        timeAgo = '${difference.inDays}d ago';
+      } else {
+        timeAgo = '${date.day}/${date.month}/${date.year}';
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -335,7 +373,7 @@ class _CommunityPageState extends State<CommunityPage> {
                     ),
                   ),
                   Text(
-                    '2 d',
+                    timeAgo,
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 12,
@@ -347,83 +385,76 @@ class _CommunityPageState extends State<CommunityPage> {
             ],
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.share, size: 20, color: Colors.grey),
+            icon: Icon(Icons.more_vert, color: Colors.grey[700]),
             onSelected: (value) async {
               final postData = post.data() as Map<String, dynamic>;
-              final postId = post.id;
               final postUrl = 'https://yourapp.com/community/$postId';
               final shareText =
                   'Check out this post: ${postData['question']}\n$postUrl';
 
-              switch (value) {
-                case 'facebook':
-                  final facebookUrl =
-                      'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(postUrl)}';
-                  if (await canLaunch(facebookUrl)) {
-                    await launch(facebookUrl);
-                  }
-                  break;
-                case 'twitter':
-                  final twitterUrl =
-                      'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(shareText)}';
-                  if (await canLaunch(twitterUrl)) {
-                    await launch(twitterUrl);
-                  }
-                  break;
-                case 'whatsapp':
-                  final whatsappUrl =
-                      'https://wa.me/?text=${Uri.encodeComponent(shareText)}';
-                  if (await canLaunch(whatsappUrl)) {
-                    await launch(whatsappUrl);
-                  }
-                  break;
-                case 'share':
-                  Share.share(shareText);
-                  break;
+              if (value == 'share') {
+                Share.share(shareText);
+              } else if (value == 'delete') {
+                // Confirm before deleting
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Delete Post'),
+                    content: Text('Are you sure you want to delete this post?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child:
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await FirebaseFirestore.instance
+                      .collection('community_posts')
+                      .doc(postId)
+                      .delete();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Post deleted')),
+                  );
+                }
               }
             },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem(
-                value: 'facebook',
-                child: Row(
-                  children: [
-                    Icon(Icons.facebook, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Text(tr('community.share.facebook')),
-                  ],
+            itemBuilder: (BuildContext context) {
+              List<PopupMenuEntry<String>> items = [
+                PopupMenuItem(
+                  value: 'share',
+                  child: Row(
+                    children: [
+                      Icon(Icons.share, color: Colors.grey),
+                      SizedBox(width: 8),
+                      Text('Share'),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'twitter',
-                child: Row(
-                  children: [
-                    Icon(Icons.alternate_email, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Text(tr('community.share.twitter')),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'whatsapp',
-                child: Row(
-                  children: [
-                    Icon(Icons.message, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text(tr('community.share.whatsapp')),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'share',
-                child: Row(
-                  children: [
-                    Icon(Icons.share, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Text(tr('community.share.other')),
-                  ],
-                ),
-              ),
-            ],
+              ];
+              // Only show delete if current user is the owner
+              if (FirebaseAuth.instance.currentUser?.uid == postOwnerId) {
+                items.add(
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return items;
+            },
           ),
         ],
       ),
@@ -570,6 +601,9 @@ class _CommunityPageState extends State<CommunityPage> {
               }
             }
 
+            int answersCount =
+                (post.data() as Map<String, dynamic>)['answersCount'] ?? 0;
+
             return Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -701,21 +735,9 @@ class _CommunityPageState extends State<CommunityPage> {
                       ),
                     ],
                   ),
-                  FutureBuilder<QuerySnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('community_posts')
-                        .doc(post.id)
-                        .collection('replies')
-                        .get(),
-                    builder: (context, answersSnapshot) {
-                      int answersCount = answersSnapshot.hasData
-                          ? answersSnapshot.data!.docs.length
-                          : 0;
-                      return Text(
-                        '$answersCount answers',
-                        style: TextStyle(color: Colors.grey),
-                      );
-                    },
+                  Text(
+                    '$answersCount answers',
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ],
               ),
