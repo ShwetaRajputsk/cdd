@@ -95,5 +95,12 @@
     "nameEmailRequired": "Name and email cannot be empty",
     "imageUploadError": "Error uploading image",
     "profileUpdated": "Profile updated successfully",
-    "profileUpdateError": "Error updating profile"
+    "profileUpdateError": "Error updating profile",
+    "invalidImageTitle": "Invalid Image Detected",
+    "invalidImageDescription": "Your image couldn't be processed. Please follow these guidelines:",
+    "guideline1": "Capture a clear, close-up photo of a plant leaf",
+    "guideline2": "Ensure the leaf occupies most of the frame",
+    "guideline3": "Use good lighting with minimal shadows",
+    "avoid1": "Don't upload images of entire plants or multiple leaves",
+    "avoid2": "Avoid blurry, distant, or low-quality photos"
 }
