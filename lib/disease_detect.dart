@@ -18,10 +18,16 @@ class CropDiseaseHome extends StatefulWidget {
 class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   Uint8List? _imageData;
   bool _isLoading = false;
+  bool _showImageError = false;
   int _currentIndex = 2;
   final Color primaryColor = const Color(0xFF1C4B0C);
+  final Color errorColor = const Color(0xFFD32F2F);
 
   Future<void> _pickImage() async {
+    setState(() {
+      _showImageError = false; // Reset error when picking new image
+    });
+    
     showDialog(
       context: context,
       builder: (context) {
@@ -100,7 +106,10 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
   }
 
   Future<void> _sendImage(Uint8List imageData) async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _showImageError = false;
+    });
 
     try {
       // Check image size before sending
@@ -123,14 +132,8 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
         throw Exception('serverProcessingError'.tr());
       } 
       else if (response.statusCode == 400) {
-        try {
-          final jsonResponse = jsonDecode(result);
-          final error = jsonResponse['error'] ?? 'unknownError'.tr();
-          final details = jsonResponse['details'] ?? '';
-          throw Exception('$error\n$details');
-        } catch (e) {
-          throw Exception('invalidRequest'.tr());
-        }
+        setState(() => _showImageError = true);
+        return;
       } 
       else if (response.statusCode != 200) {
         throw Exception('serverError ${response.statusCode}'.tr());
@@ -168,6 +171,78 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Widget _buildErrorCard() {
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: errorColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: errorColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.error_outline, color: errorColor),
+              const SizedBox(width: 8),
+              Text(
+                'invalidImageTitle'.tr(),
+                style: TextStyle(
+                  color: errorColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'invalidImageDescription'.tr(),
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildGuidelineRow(Icons.check_circle, 'guideline1'.tr()),
+          _buildGuidelineRow(Icons.check_circle, 'guideline2'.tr()),
+          _buildGuidelineRow(Icons.check_circle, 'guideline3'.tr()),
+          const SizedBox(height: 8),
+          _buildGuidelineRow(Icons.cancel, 'avoid1'.tr(), isError: true),
+          _buildGuidelineRow(Icons.cancel, 'avoid2'.tr(), isError: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuidelineRow(IconData icon, String text, {bool isError = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: isError ? errorColor : primaryColor,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isError ? errorColor : Colors.grey[700],
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onItemTapped(int index) {
@@ -313,6 +388,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                             ],
                           ),
                         ],
+                        if (_showImageError) _buildErrorCard(),
                       ],
                     ),
                   ),
