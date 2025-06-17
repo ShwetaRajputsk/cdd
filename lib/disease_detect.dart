@@ -5,6 +5,7 @@ import 'home_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:async';
 import 'bottom_navigation_bar.dart';
 import 'prediction.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -45,13 +46,20 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 onTap: () async {
+                  Navigator.of(context).pop();
                   final picker = ImagePicker();
                   final pickedFile = await picker.pickImage(source: ImageSource.gallery);
                   
                   if (pickedFile != null) {
-                    _imageData = await pickedFile.readAsBytes();
-                    Navigator.of(context).pop();
-                    await _sendImage(_imageData!);
+                    try {
+                      _imageData = await pickedFile.readAsBytes();
+                      setState(() {});
+                      await _sendImage(_imageData!);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('errorReadingImage'.tr())),
+                      );
+                    }
                   }
                 },
               ),
@@ -95,27 +103,67 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
     setState(() => _isLoading = true);
 
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('https://cddnew-2.onrender.com/predict'));
+      // Check image size before sending
+      if (imageData.lengthInBytes > 5 * 1024 * 1024) { // 5MB
+        throw Exception('imageTooLarge'.tr());
+      }
+
+      final request = http.MultipartRequest('POST', Uri.parse('https://cddnew-15.onrender.com/predict'));
       request.files.add(http.MultipartFile.fromBytes('image', imageData, filename: 'image.jpg'));
 
-      final response = await request.send();
+      // Set timeout to 30 seconds
+      final response = await request.send().timeout(const Duration(seconds: 30));
+      
+      // Get response data before handling status codes
       final responseData = await response.stream.toBytes();
       final result = String.fromCharCodes(responseData);
+      
+      // Handle different status codes
+      if (response.statusCode == 500) {
+        throw Exception('serverProcessingError'.tr());
+      } 
+      else if (response.statusCode == 400) {
+        try {
+          final jsonResponse = jsonDecode(result);
+          final error = jsonResponse['error'] ?? 'unknownError'.tr();
+          final details = jsonResponse['details'] ?? '';
+          throw Exception('$error\n$details');
+        } catch (e) {
+          throw Exception('invalidRequest'.tr());
+        }
+      } 
+      else if (response.statusCode != 200) {
+        throw Exception('serverError ${response.statusCode}'.tr());
+      }
+
+      // Process successful response
       final jsonResponse = jsonDecode(result);
+
+      // Handle null values safely
+      final diseaseName = jsonResponse['prediction']?.toString() ?? 'unknownDisease'.tr();
+      final symptomsList = jsonResponse['symptoms'] as List?;
+      final symptoms = symptomsList?.join('\n') ?? 'noSymptomsAvailable'.tr();
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => PlantHealthScreen(
-            imageData: _imageData!,
-            diseaseName: jsonResponse['prediction'],
-            symptoms: (jsonResponse['symptoms'] as List).join('\n'),
+            imageData: imageData,
+            diseaseName: diseaseName,
+            symptoms: symptoms,
           ),
         ),
       );
+    } on TimeoutException {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('requestTimedOut'.tr())),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('errorOccurred'.tr())),
+        SnackBar(
+          content: Text(e.toString()),
+          duration: const Duration(seconds: 5),
+        ),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -152,7 +200,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 24), // Added space after AppBar
+            const SizedBox(height: 24),
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -207,7 +255,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
                           height: 54,
                           child: ElevatedButton.icon(
                             onPressed: _pickImage,
-                            icon: const Icon(Icons.camera_alt, color: Colors.white), // Camera icon in white
+                            icon: const Icon(Icons.camera_alt, color: Colors.white),
                             label: Text(
                               'uploadImageDetect'.tr(),
                               style: const TextStyle(color: Colors.white),
@@ -276,7 +324,7 @@ class _CropDiseaseHomeState extends State<CropDiseaseHome> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _pickImage,
-        child: const Icon(Icons.camera_alt_rounded, color: Colors.white), // Camera icon in white
+        child: const Icon(Icons.camera_alt_rounded, color: Colors.white),
         backgroundColor: primaryColor,
       ),
       bottomNavigationBar: CustomBottomNavigationBar(
