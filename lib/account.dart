@@ -62,7 +62,8 @@ class _AccountPageState extends State<AccountPage> {
           ),
         ),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white), // Back arrow icon in white
+        iconTheme: const IconThemeData(
+            color: Colors.white), // Back arrow icon in white
       ),
       backgroundColor: const Color(0xFFF5F5F5),
       body: SingleChildScrollView(
@@ -257,8 +258,7 @@ class _AccountPageState extends State<AccountPage> {
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => LoginScreen()),
+                        MaterialPageRoute(builder: (context) => LoginScreen()),
                       );
                     },
                     child: Padding(
