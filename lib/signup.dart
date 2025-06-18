@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/auth_service.dart';
 
 class SignupScreen extends StatelessWidget {
@@ -12,13 +13,25 @@ class SignupScreen extends StatelessWidget {
   void _signUp(BuildContext context) async {
     try {
       // Create user with email and password
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
       // Update user profile with name
       await userCredential.user?.updateDisplayName(_nameController.text.trim());
+
+      // Save user info to Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set({
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'imageUrl':
+            '', // You can update this later if user uploads a profile image
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('registrationSuccessful'.tr())),
@@ -33,8 +46,24 @@ class SignupScreen extends StatelessWidget {
 
   void _handleGoogleSignIn(BuildContext context) async {
     try {
-      final UserCredential? userCredential = await _authService.signInWithGoogle();
+      final UserCredential? userCredential =
+          await _authService.signInWithGoogle();
       if (userCredential != null) {
+        // Save user info to Firestore if not already present
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .get();
+        if (!userDoc.exists) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+            'name': userCredential.user!.displayName ?? '',
+            'email': userCredential.user!.email ?? '',
+            'imageUrl': userCredential.user!.photoURL ?? '',
+          });
+        }
         Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
@@ -94,12 +123,14 @@ class SignupScreen extends StatelessWidget {
                     ),
                     filled: true,
                     fillColor: Colors.grey[200],
-                    prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF1C4B0C)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    prefixIcon: const Icon(Icons.person_outline,
+                        color: Color(0xFF1C4B0C)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Email Field
                 TextField(
                   controller: _emailController,
@@ -112,8 +143,10 @@ class SignupScreen extends StatelessWidget {
                     ),
                     filled: true,
                     fillColor: Colors.grey[200],
-                    prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF1C4B0C)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    prefixIcon: const Icon(Icons.email_outlined,
+                        color: Color(0xFF1C4B0C)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -131,8 +164,10 @@ class SignupScreen extends StatelessWidget {
                     ),
                     filled: true,
                     fillColor: Colors.grey[200],
-                    prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF1C4B0C)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    prefixIcon: const Icon(Icons.lock_outline,
+                        color: Color(0xFF1C4B0C)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -162,7 +197,7 @@ class SignupScreen extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 16),
-                
+
                 // Login link
                 Center(
                   child: GestureDetector(
